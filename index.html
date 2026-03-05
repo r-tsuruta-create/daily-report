@@ -104,7 +104,7 @@ let S={
   aCats:DC(),aMemo:"",
   editGreet:false,editLabel:-1,presets:-1,editPresets:false,
   preview:false,copied:false,sent:"",
-  showWebhook:false,
+  showWebhook:false,showImport:false,
 };
 
 // ========== Touch drag system ==========
@@ -387,6 +387,8 @@ function R(keep){
 
   let o="";
   if(S.tab==="taikin"){
+    const hasA=S.aCats.some(c=>c.tasks.some(t=>t.n&&t.h));
+    if(hasA)o+=`<button class="flow-btn" onclick="flowFromAsahai()">朝会報告の内容を流用</button>`;
     o+=`<div class="greet-row">`;
     if(S.editGreet){
       o+=`<textarea id="gi" style="flex:1;min-height:40px;resize:vertical;font-size:13px">${esc(S.greeting)}</textarea><button class="b bsm" onclick="sG()">完了</button>`;
@@ -410,7 +412,10 @@ function R(keep){
   o+=`<button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
   o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button>`;
   o+=`</div><div class="ar">`;
-  o+=`<button class="b bx" onclick="rA()">リセット</button></div>`;
+  o+=`<button class="b bx" onclick="rA()">リセット</button>`;
+  o+=`<button class="b bx" onclick="S.showImport=!S.showImport;R(1)">📋 テキストから読み込む</button>`;
+  o+=`</div>`;
+  o+=rImportSection();
 
   o+=`<details style="margin:16px 0"><summary style="font-size:13px;color:#52525b;cursor:pointer"><span style="color:#3b82f6;text-decoration:underline">使い方・Slack投稿の流れはこちら</span></summary>`;
   o+=`<div class="guide">`;
@@ -466,6 +471,79 @@ function cR(){
 }
 
 function flowFromTaikin(){S.aCats=JSON.parse(JSON.stringify(S.tCats));R(1)}
+function flowFromAsahai(){S.tCats=JSON.parse(JSON.stringify(S.aCats));R(1)}
+
+// ========== インポート ==========
+function parseImportText(text){
+  // 改行がない場合、＜＞/<>の前に改行を挿入して正規化
+  let normalized = text
+    .replace(/([＜<][^＞>]+[＞>])/g, '\n$1\n')  // カテゴリ前後に改行
+    .replace(/(\d+\.?\d*h)[　 ]/g, '\n$1｜')      // Xh＋全角スペース → 改行+｜
+    .replace(/【備考】/g, '\n【備考】\n')
+    .split('\n').map(l=>l.trim()).filter(l=>l);
+
+  const cats=[];
+  let cur=null;
+  let memoMode=false;
+  const memoLines=[];
+
+  for(const line of normalized){
+    if(line==='【備考】'){memoMode=true;continue}
+    if(memoMode){memoLines.push(line);continue}
+
+    const catMatch=line.match(/^[＜<](.+)[＞>]$/);
+    if(catMatch){
+      cur={label:catMatch[1],color:COLS[cats.length%COLS.length],tasks:[]};
+      cats.push(cur);
+      continue;
+    }
+    const taskMatch=line.match(/^([\d.]+)h[｜|](.+)$/);
+    if(taskMatch&&cur){
+      cur.tasks.push({h:taskMatch[1],n:taskMatch[2].trim()});
+    }
+  }
+
+  cats.forEach(c=>{if(c.tasks.length===0)c.tasks.push({n:'',h:''})});
+  return cats.length>0?{cats,memo:memoLines.join('\n')}:null;
+}
+
+function execImport(mode){
+  const text=document.getElementById('import_textarea')?.value||'';
+  const result=parseImportText(text);
+  if(!result){
+    alert('読み込めませんでした。\n形式を確認してください。');
+    return;
+  }
+  if(mode==='overwrite'){
+    if(S.tab==='taikin'){S.tCats=result.cats;if(result.memo)S.tMemo=result.memo;}
+    else{S.aCats=result.cats;if(result.memo)S.aMemo=result.memo;}
+  }else{
+    // 追加モード：既存カテゴリの後ろに足す
+    if(S.tab==='taikin'){
+      S.tCats=[...S.tCats,...result.cats];
+      if(result.memo)S.tMemo=(S.tMemo?S.tMemo+'\n':'')+result.memo;
+    }else{
+      S.aCats=[...S.aCats,...result.cats];
+      if(result.memo)S.aMemo=(S.aMemo?S.aMemo+'\n':'')+result.memo;
+    }
+  }
+  S.showImport=false;
+  R(1);
+}
+
+function rImportSection(){
+  if(!S.showImport)return '';
+  let o=`<div style="background:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px;margin-bottom:12px">`;
+  o+=`<div style="font-size:13px;font-weight:700;color:#e4e4e7;margin-bottom:8px">テキストから読み込む</div>`;
+  o+=`<div style="font-size:12px;color:#71717a;margin-bottom:8px">日報ジェネレーターで出力したテキストをそのまま貼り付けてください</div>`;
+  o+=`<textarea id="import_textarea" style="width:100%;min-height:120px;resize:vertical;font-size:12px;font-family:monospace;background:#0f0f0f;border:1px solid #334155;color:#e4e4e7;border-radius:6px;padding:8px" placeholder="＜疑似PJ研修＞&#10;1.0h｜週間MTG&#10;5.5h｜追加要望の実装&#10;＜その他＞&#10;0.5h｜朝会・夕会等"></textarea>`;
+  o+=`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`;
+  o+=`<button onclick="execImport('overwrite')" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">上書きして読み込む</button>`;
+  o+=`<button onclick="execImport('append')" style="background:#27272a;color:#e4e4e7;border:1px solid #3f3f46;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">追加して読み込む</button>`;
+  o+=`<button onclick="S.showImport=false;R(1)" style="background:transparent;color:#52525b;border:none;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit">キャンセル</button>`;
+  o+=`</div></div>`;
+  return o;
+}
 
 function sendSlack(){
   if(!WEBHOOK){S.showWebhook=true;R(1);return}
