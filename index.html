@@ -11,6 +11,8 @@
   .hdr{position:sticky;top:0;z-index:100;background:#0f0f0f;padding:16px 16px 0;border-bottom:1px solid #1a1a1f}
   .hdr-inner{max-width:560px;margin:0 auto}
   .hdr h1{font-size:18px;font-weight:700;color:#fff;margin-bottom:10px}
+  .hdr-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .theme-btn{background:transparent;border:1px solid #3f3f46;border-radius:6px;color:#71717a;font-size:11px;padding:3px 8px;cursor:pointer;font-family:inherit}
   .hdr .sub{font-size:12px;color:#52525b;margin-bottom:10px}
   .tabs{display:flex;gap:0;background:#1e1e24;border-radius:8px;padding:3px;margin-bottom:12px}
   .tab{flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;border:none;font-family:inherit}
@@ -67,6 +69,39 @@
   .guide .step-desc{font-size:12px;color:#a1a1aa;line-height:1.7;padding-left:32px}
   .drag-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:10px;background:#18181b}
   .drop-indicator{height:3px;background:#3b82f6;border-radius:2px;transition:all .1s;position:fixed;z-index:9998;pointer-events:none}
+
+  /* ===== ライトモード ===== */
+  body.light{background:#e8e8e8;color:#18181b}
+  body.light .hdr{background:#f0f0f0;border-bottom-color:#d4d4d4;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+  body.light .hdr h1{color:#18181b}
+  body.light .tabs{background:#d4d4d4}
+  body.light .tab.off{color:#3f3f46}
+  body.light input,body.light textarea{background:#fff;color:#18181b;border-color:#c4c4c4;box-shadow:inset 0 1px 2px rgba(0,0,0,0.06)}
+  body.light input::placeholder,body.light textarea::placeholder{color:#a1a1aa}
+  body.light .cd{background:#fff;border-color:#d4d4d4;box-shadow:0 2px 6px rgba(0,0,0,0.08)}
+  body.light .bg{background:#e4e4e7;color:#3f3f46;font-weight:700}
+  body.light .cl{border-bottom-color:#a1a1aa;color:#18181b;font-weight:600}
+  body.light .cli{color:#18181b;border-bottom-color:#3b82f6}
+  body.light .ba{background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;font-weight:600}
+  body.light .bx{background:#d4d4d4;color:#18181b;border:1px solid #b4b4b4;font-weight:600}
+  body.light .bsm{background:#e4e4e7;color:#3f3f46}
+  body.light .cx{color:#71717a}
+  body.light .br{color:#71717a}
+  body.light .pp{background:#f4f4f5;border-color:#d4d4d4}
+  body.light .pc{background:#e4e4e7;color:#18181b;border-color:#b4b4b4;font-weight:500}
+  body.light .pv{background:#fff;border-color:#d4d4d4;color:#3f3f46;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+  body.light .tp{background:#d4d4d4;color:#18181b;font-weight:600}
+  body.light .flow-btn{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+  body.light .guide{background:#fff;border-color:#d4d4d4;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+  body.light .guide h3{color:#18181b}
+  body.light .guide .step-title{color:#18181b}
+  body.light .guide .step-desc{color:#52525b}
+  body.light .drag-ghost{background:#fff}
+  body.light .theme-btn{border-color:#b4b4b4;color:#3f3f46}
+  body.light details>summary{color:#52525b}
+  body.light .st{color:#18181b}
+  body.light .to{color:#18181b}
+
   @media(max-width:480px){
     .hdr{padding:12px 12px 0}.bd{padding:12px 12px calc(120px + env(safe-area-inset-bottom))}
     .hi{width:52px!important;font-size:13px;padding:6px 6px}
@@ -97,6 +132,13 @@ function sP(){localStorage.setItem("presets",JSON.stringify(P))}
 let WEBHOOK=localStorage.getItem("webhook_url")||"";
 function sW(v){WEBHOOK=v.trim();localStorage.setItem("webhook_url",WEBHOOK)}
 
+let THEME=localStorage.getItem("theme")||"dark";
+function toggleTheme(){THEME=THEME==="dark"?"light":"dark";localStorage.setItem("theme",THEME);applyTheme();R(1)}
+function applyTheme(){
+  if(THEME==="light"){document.body.classList.add("light")}
+  else{document.body.classList.remove("light")}
+}
+
 function saveState(){
   localStorage.setItem("state",JSON.stringify({
     tCats:S.tCats,tMemo:S.tMemo,
@@ -124,7 +166,7 @@ let S={
   aCats:DC(),aMemo:"",
   editGreet:false,editLabel:-1,presets:-1,editPresets:false,
   preview:false,copied:false,sent:"",
-  showWebhook:false,showImport:false,
+  showWebhook:false,showImport:false,importError:false,
 };
 
 // ========== Touch drag system ==========
@@ -380,7 +422,7 @@ function rCats(list,pfx){
         o+=`<div style="width:100%;margin-top:4px"><button class="b bsm" onclick="S.editPresets=false;R(1)">完了</button></div>`;
       }else{
         P.forEach(p=>{o+=`<button class="pc" onclick="aPs('${pfx}',${ci},'${esc(p)}')">${esc(p)}</button>`});
-        o+=`<button onclick="S.editPresets=true;R(1)" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px">⚙ プリセット編集</button>`;
+        o+=`<button onclick="S.editPresets=true;R(1)" class="b bsm" style="margin-top:4px;padding:6px 14px;font-size:12px;font-weight:600">⚙ プリセット編集</button>`;
       }
       o+=`</div>`;
     }
@@ -396,7 +438,10 @@ function R(keep){
   const g=gtl(list),gc=g>=8?"#22c55e":g>=6?"#f59e0b":"#ef4444";
   const pfx=curPfx();
 
-  let hdr=`<div class="hdr-inner"><h1>日報ジェネレーター</h1>`;
+  let hdr=`<div class="hdr-inner"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
+  hdr+=`<h1 style="margin-bottom:0">日報ジェネレーター</h1>`;
+  hdr+=`<button onclick="toggleTheme()" style="background:transparent;border:1px solid #3f3f46;border-radius:6px;padding:4px 10px;font-size:12px;color:${THEME==='dark'?'#a1a1aa':'#78716c'};cursor:pointer;font-family:inherit">${THEME==='dark'?'ライトモード':'ダークモード'}</button>`;
+  hdr+=`</div>`;
   hdr+=`<div class="tabs">`;
   hdr+=`<button class="tab ${S.tab==='taikin'?'on':'off'}" onclick="sw('taikin')">退勤報告</button>`;
   hdr+=`<button class="tab ${S.tab==='asahai'?'on':'off'}" onclick="sw('asahai')">朝会報告</button>`;
@@ -411,7 +456,7 @@ function R(keep){
     if(S.editGreet){
       o+=`<textarea id="gi" style="flex:1;min-height:40px;resize:vertical;font-size:13px">${esc(S.greeting)}</textarea><button class="b bsm" onclick="sG()">完了</button>`;
     }else{
-      o+=`<span style="flex:1;font-size:13px;color:#a1a1aa;white-space:pre-wrap">${esc(S.greeting)}</span><button class="b bsm" onclick="S.editGreet=true;R(1)">編集</button>`;
+      o+=`<span style="flex:1;font-size:13px;color:${THEME==='light'?'#3f3f46':'#a1a1aa'};white-space:pre-wrap">${esc(S.greeting)}</span><button class="b bsm" onclick="S.editGreet=true;R(1)">編集</button>`;
     }
     o+=`</div>`;
   }
@@ -428,7 +473,7 @@ function R(keep){
 
   o+=`<div class="ar">`;
   o+=`<button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
-  o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button>`;
+  o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':THEME==='light'?'#7c3aed':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button>`;
   o+=`</div><div class="ar">`;
   o+=`<button class="b bx" onclick="rA()">リセット</button>`;
   o+=`<button class="b bx" onclick="S.showImport=!S.showImport;R(1)">📋 テキストから読み込む</button>`;
@@ -438,17 +483,17 @@ function R(keep){
   o+=`<details style="margin:16px 0"><summary style="font-size:13px;color:#52525b;cursor:pointer"><span style="color:#3b82f6;text-decoration:underline">使い方・Slack投稿の流れはこちら</span></summary>`;
   o+=`<div class="guide">`;
   o+=`<h3>退勤報告の流れ</h3>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">1</span>「退勤報告」タブでタスクを入力</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">2</span>「Slackにコピー」ボタンを押す</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">3</span>Slackの #qnz_第2事業部 を開く</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">4</span>当日の退勤スレッドに返信で貼り付け</div></div>`;
+  o+=`<div class="step"><div class="step-title">① 「退勤報告」タブでタスクを入力</div></div>`;
+  o+=`<div class="step"><div class="step-title">② 「Slackにコピー」ボタンを押す</div></div>`;
+  o+=`<div class="step"><div class="step-title">③ Slackの #qnz_第2事業部 を開く</div></div>`;
+  o+=`<div class="step"><div class="step-title">④ 当日の退勤スレッドに返信で貼り付け</div></div>`;
   o+=`<h3 style="margin-top:20px">朝会報告の流れ</h3>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">1</span>「朝会報告」タブを開く</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">2</span>「退勤報告の内容を流用」で昨日の実績をセット</div><div class="step-desc">※前日の退勤報告を入力済みの場合に表示</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">3</span>今日やることに合わせてタスクを修正</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">4</span>「Slackにコピー」ボタンを押す</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">5</span>Salesforce for Slack Botの「朝会報告を実施」を押す</div></div>`;
-  o+=`<div class="step"><div class="step-title"><span class="step-num">6</span>フォームの各欄に貼り付けて「完了」</div><div class="step-desc">昨日の実績 → コピー内容を貼り付け<br>今日の予定 → 必要に応じて編集して貼り付け<br>アピール・困りごと → 手入力</div></div>`;
+  o+=`<div class="step"><div class="step-title">① 「朝会報告」タブを開く</div></div>`;
+  o+=`<div class="step"><div class="step-title">② 「退勤報告の内容を流用」で昨日の実績をセット</div><div class="step-desc">※前日の退勤報告を入力済みの場合に表示</div></div>`;
+  o+=`<div class="step"><div class="step-title">③ 今日やることに合わせてタスクを修正</div></div>`;
+  o+=`<div class="step"><div class="step-title">④ 「Slackにコピー」ボタンを押す</div></div>`;
+  o+=`<div class="step"><div class="step-title">⑤ Salesforce for Slack Botの「朝会報告を実施」を押す</div></div>`;
+  o+=`<div class="step"><div class="step-title">⑥ フォームの各欄に貼り付けて「完了」</div><div class="step-desc">昨日の実績 → コピー内容を貼り付け<br>今日の予定 → 必要に応じて編集して貼り付け<br>アピール・困りごと → 手入力</div></div>`;
   o+=`</div></details>`;
 
   o+=`<button class="tp" onclick="S.preview=!S.preview;R(1)">${S.preview?'プレビューを閉じる':'プレビューを表示'}</button>`;
@@ -530,7 +575,8 @@ function execImport(mode){
   const text=document.getElementById('import_textarea')?.value||'';
   const result=parseImportText(text);
   if(!result){
-    alert('読み込めませんでした。\n形式を確認してください。');
+    S.importError=true;R(1);
+    setTimeout(()=>{S.importError=false;R(1)},3000);
     return;
   }
   if(mode==='overwrite'){
@@ -552,15 +598,28 @@ function execImport(mode){
 
 function rImportSection(){
   if(!S.showImport)return '';
-  let o=`<div style="background:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px;margin-bottom:12px">`;
-  o+=`<div style="font-size:13px;font-weight:700;color:#e4e4e7;margin-bottom:8px">テキストから読み込む</div>`;
-  o+=`<div style="font-size:12px;color:#71717a;margin-bottom:8px">日報ジェネレーターで出力したテキストをそのまま貼り付けてください</div>`;
-  o+=`<textarea id="import_textarea" style="width:100%;min-height:120px;resize:vertical;font-size:12px;font-family:monospace;background:#0f0f0f;border:1px solid #334155;color:#e4e4e7;border-radius:6px;padding:8px" placeholder="＜疑似PJ研修＞&#10;1.0h｜週間MTG&#10;5.5h｜追加要望の実装&#10;＜その他＞&#10;0.5h｜朝会・夕会等"></textarea>`;
+  const isDark=THEME==='dark';
+  const cardBg=isDark?'#18181b':'#fff';
+  const cardBorder=isDark?'#27272a':'#d4d4d4';
+  const subText=isDark?'#71717a':'#52525b';
+  const inputBg=isDark?'#0f0f0f':'#fff';
+  const inputBorder=isDark?'#334155':'#c4c4c4';
+  const inputColor=isDark?'#e4e4e7':'#18181b';
+  const addBtnBg=isDark?'#27272a':'#e4e4e7';
+  const addBtnColor=isDark?'#e4e4e7':'#18181b';
+  const addBtnBorder=isDark?'#3f3f46':'#b4b4b4';
+
+  let o=`<div style="background:${cardBg};border:1px solid ${cardBorder};border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,${isDark?'0.3':'0.08'})">`;
+  o+=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">テキストから読み込む</div>`;
+  o+=`<div style="font-size:12px;color:${subText};margin-bottom:8px">日報ジェネレーターで出力したテキストをそのまま貼り付けてください</div>`;
+  o+=`<textarea id="import_textarea" style="width:100%;min-height:120px;resize:vertical;font-size:12px;font-family:monospace;background:${inputBg};border:1px solid ${inputBorder};color:${inputColor};border-radius:6px;padding:8px" placeholder="＜疑似PJ研修＞&#10;1.0h｜週間MTG&#10;5.5h｜追加要望の実装&#10;＜その他＞&#10;0.5h｜朝会・夕会等"></textarea>`;
   o+=`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`;
   o+=`<button onclick="execImport('overwrite')" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">上書きして読み込む</button>`;
-  o+=`<button onclick="execImport('append')" style="background:#27272a;color:#e4e4e7;border:1px solid #3f3f46;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">追加して読み込む</button>`;
-  o+=`<button onclick="S.showImport=false;R(1)" style="background:transparent;color:#52525b;border:none;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit">キャンセル</button>`;
-  o+=`</div></div>`;
+  o+=`<button onclick="execImport('append')" style="background:${addBtnBg};color:${addBtnColor};border:1px solid ${addBtnBorder};border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">追加して読み込む</button>`;
+  o+=`<button onclick="S.showImport=false;S.importError=false;R(1)" style="background:transparent;color:${subText};border:none;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit">キャンセル</button>`;
+  o+=`</div>`;
+  if(S.importError)o+=`<div style="margin-top:8px;padding:8px 12px;background:${isDark?'#2d0f0f':'#fef2f2'};border:1px solid ${isDark?'#7f1d1d':'#fca5a5'};border-radius:6px;font-size:12px;color:${isDark?'#fca5a5':'#b91c1c'}">⚠ 読み込めませんでした。＜カテゴリ名＞と 0.5h｜タスク名 の形式で貼り付けてください。</div>`;
+  o+=`</div>`;
   return o;
 }
 
@@ -595,40 +654,53 @@ function saveWebhook(){
 
 function rWebhookSection(){
   const isOpen=S.showWebhook;
+  const isDark=THEME==='dark';
+  const cardBg=isDark?'#18181b':'#fff';
+  const cardBorder=isDark?'#27272a':'#d4d4d4';
+  const innerBg=isDark?'#1e293b':'#f0f7ff';
+  const innerBorder=isDark?'#334155':'#bfdbfe';
+  const bodyText=isDark?'#94a3b8':'#374151';
+  const headText=isDark?'#e4e4e7':'#18181b';
+  const codeStyle=isDark?'background:#0f172a;color:#7dd3fc':'background:#e0f2fe;color:#0369a1';
+  const inputBg=isDark?'#0f0f0f':'#fff';
+  const inputBorder=isDark?'#334155':'#c4c4c4';
+  const inputColor=isDark?'#e4e4e7':'#18181b';
+  const subText=isDark?'#52525b':'#6b7280';
+  const divBorder=isDark?'#1a1a1f':'#e5e5e5';
+
   let o=`<details style="margin:0 0 8px" ${isOpen?'open':''}>`;
-  o+=`<summary style="font-size:11px;color:#3f3f46;cursor:pointer;display:flex;align-items:center;gap:5px;list-style:none;user-select:none">`;
+  o+=`<summary style="font-size:11px;color:${isDark?'#3f3f46':'#6b7280'};cursor:pointer;display:flex;align-items:center;gap:5px;list-style:none;user-select:none">`;
   o+=`<span style="color:${WEBHOOK?'#16a34a':'#71717a'};font-size:10px">${WEBHOOK?'●':'○'}</span>`;
   o+=`<span style="text-decoration:underline;letter-spacing:0.02em">${WEBHOOK?'Slack連携設定（設定済み）':'Slack連携設定'}</span>`;
   o+=`</summary>`;
-  o+=`<div style="background:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px;margin-top:8px">`;
+  o+=`<div style="background:${cardBg};border:1px solid ${cardBorder};border-radius:10px;padding:16px;margin-top:8px;box-shadow:0 2px 6px rgba(0,0,0,${isDark?'0.3':'0.08'})">`;
 
-  // 使い方セクション
-  o+=`<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.9;color:#94a3b8">`;
-  o+=`<div style="font-weight:700;color:#e4e4e7;font-size:13px;margin-bottom:8px">Webhook URLの取得手順</div>`;
-  o+=`<div><b style="color:#e4e4e7">①</b> ブラウザで <span style="background:#0f172a;padding:1px 6px;border-radius:4px;font-family:monospace;color:#7dd3fc">api.slack.com/apps</span> を開く</div>`;
-  o+=`<div><b style="color:#e4e4e7">②</b> 右上の「<b style="color:#e4e4e7">Create New App</b>」→「<b style="color:#e4e4e7">From scratch</b>」を選ぶ</div>`;
-  o+=`<div><b style="color:#e4e4e7">③</b> App Name（例：日報bot）を入力し、自分の会社のワークスペースを選んで「<b style="color:#e4e4e7">Create App</b>」</div>`;
-  o+=`<div><b style="color:#e4e4e7">④</b> 左メニューの「<b style="color:#e4e4e7">Incoming Webhooks</b>」をクリック</div>`;
-  o+=`<div><b style="color:#e4e4e7">⑤</b> トグルをオンにして「<b style="color:#e4e4e7">Activate Incoming Webhooks</b>」を有効化</div>`;
-  o+=`<div style="background:#2d1f00;border:1px solid #78350f;border-radius:6px;padding:10px 12px;margin:8px 0;font-size:11px;color:#fcd34d">`;
+  o+=`<div style="background:${innerBg};border:1px solid ${innerBorder};border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.9;color:${bodyText}">`;
+  o+=`<div style="font-weight:700;color:${headText};font-size:13px;margin-bottom:8px">Webhook URLの取得手順</div>`;
+  o+=`<div><b style="color:${headText}">①</b> ブラウザで <span style="${codeStyle};padding:1px 6px;border-radius:4px;font-family:monospace">api.slack.com/apps</span> を開く</div>`;
+  o+=`<div><b style="color:${headText}">②</b> 右上の「<b style="color:${headText}">Create New App</b>」→「<b style="color:${headText}">From scratch</b>」を選ぶ</div>`;
+  o+=`<div><b style="color:${headText}">③</b> App Name（例：日報bot）を入力し、自分の会社のワークスペースを選んで「<b style="color:${headText}">Create App</b>」</div>`;
+  o+=`<div><b style="color:${headText}">④</b> 左メニューの「<b style="color:${headText}">Incoming Webhooks</b>」をクリック</div>`;
+  o+=`<div><b style="color:${headText}">⑤</b> トグルをオンにして「<b style="color:${headText}">Activate Incoming Webhooks</b>」を有効化</div>`;
+  o+=`<div style="background:${isDark?'#2d1f00':'#fffbeb'};border:1px solid ${isDark?'#78350f':'#fcd34d'};border-radius:6px;padding:10px 12px;margin:8px 0;font-size:11px;color:${isDark?'#fcd34d':'#92400e'}">`;
   o+=`⚠ ここで「インストールするボットユーザーがありません」と出た場合：<br>`;
-  o+=`<span style="color:#fde68a">1. 左メニューの「<b>OAuth &amp; Permissions</b>」をクリック</span><br>`;
-  o+=`<span style="color:#fde68a">2. 「<b>Bot Token Scopes</b>」の「Add an OAuth Scope」をクリック</span><br>`;
-  o+=`<span style="color:#fde68a">3. <b>chat:write</b> を検索して追加</span><br>`;
-  o+=`<span style="color:#fde68a">4. ページ上部の「<b>Install to Workspace</b>」ボタンをクリック → 「許可する」</span><br>`;
-  o+=`<span style="color:#fde68a">5. 左メニューの「<b>Incoming Webhooks</b>」に戻る</span>`;
+  o+=`1. 左メニューの「<b>OAuth &amp; Permissions</b>」をクリック<br>`;
+  o+=`2. 「<b>Bot Token Scopes</b>」の「Add an OAuth Scope」をクリック<br>`;
+  o+=`3. <b>chat:write</b> を検索して追加<br>`;
+  o+=`4. ページ上部の「<b>Install to Workspace</b>」ボタンをクリック → 「許可する」<br>`;
+  o+=`5. 左メニューの「<b>Incoming Webhooks</b>」に戻る`;
   o+=`</div>`;
-  o+=`<div><b style="color:#e4e4e7">⑥</b> 下にスクロールして「<b style="color:#e4e4e7">Add New Webhook to Workspace</b>」をクリック</div>`;
-  o+=`<div><b style="color:#e4e4e7">⑦</b> 送信先に「<b style="color:#e4e4e7">自分のDM（自分の名前）</b>」を選んで「許可する」</div>`;
-  o+=`<div><b style="color:#e4e4e7">⑧</b> 表示された <span style="background:#0f172a;padding:1px 6px;border-radius:4px;font-family:monospace;color:#7dd3fc">https://hooks.slack.com/services/...</span> をコピーして下に貼り付け</div>`;
-  o+=`<div style="margin-top:6px;color:#52525b;font-size:11px">※ URLはこのブラウザにのみ保存されます。他の人には見えません。</div>`;
+  o+=`<div><b style="color:${headText}">⑥</b> 下にスクロールして「<b style="color:${headText}">Add New Webhook to Workspace</b>」をクリック</div>`;
+  o+=`<div><b style="color:${headText}">⑦</b> 送信先に「<b style="color:${headText}">自分のDM（自分の名前）</b>」を選んで「許可する」</div>`;
+  o+=`<div><b style="color:${headText}">⑧</b> 表示された <span style="${codeStyle};padding:1px 6px;border-radius:4px;font-family:monospace">https://hooks.slack.com/services/...</span> をコピーして下に貼り付け</div>`;
+  o+=`<div style="margin-top:6px;color:${subText};font-size:11px">※ URLはこのブラウザにのみ保存されます。他の人には見えません。</div>`;
   o+=`</div>`;
 
   o+=`<div style="display:flex;gap:8px;align-items:center">`;
-  o+=`<input id="wh_input" type="url" placeholder="https://hooks.slack.com/services/..." value="${esc(WEBHOOK)}" style="flex:1;font-size:12px;padding:8px 10px;border-radius:6px;background:#0f0f0f;border:1px solid #334155;color:#e4e4e7;font-family:inherit">`;
+  o+=`<input id="wh_input" type="url" placeholder="https://hooks.slack.com/services/..." value="${esc(WEBHOOK)}" style="flex:1;font-size:12px;padding:8px 10px;border-radius:6px;background:${inputBg};border:1px solid ${inputBorder};color:${inputColor};font-family:inherit">`;
   o+=`<button onclick="saveWebhook()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">保存</button>`;
   o+=`</div>`;
-  if(WEBHOOK)o+=`<button onclick="sW('');R(1)" style="background:transparent;color:#52525b;border:none;font-size:11px;cursor:pointer;margin-top:6px;font-family:inherit">URLをリセット</button>`;
+  if(WEBHOOK)o+=`<button onclick="sW('');R(1)" style="background:transparent;color:${subText};border:none;font-size:11px;cursor:pointer;margin-top:6px;font-family:inherit">URLをリセット</button>`;
   o+=`</div></details>`;
   return o;
 }
@@ -638,6 +710,7 @@ function rA(){
 }
 
 loadState();
+applyTheme();
 R();
 </script>
 </body>
