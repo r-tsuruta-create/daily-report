@@ -97,6 +97,26 @@ function sP(){localStorage.setItem("presets",JSON.stringify(P))}
 let WEBHOOK=localStorage.getItem("webhook_url")||"";
 function sW(v){WEBHOOK=v.trim();localStorage.setItem("webhook_url",WEBHOOK)}
 
+function saveState(){
+  localStorage.setItem("state",JSON.stringify({
+    tCats:S.tCats,tMemo:S.tMemo,
+    aCats:S.aCats,aMemo:S.aMemo,
+    greeting:S.greeting
+  }));
+}
+function loadState(){
+  try{
+    const d=JSON.parse(localStorage.getItem("state")||"null");
+    if(d){
+      if(d.tCats)S.tCats=d.tCats;
+      if(d.tMemo)S.tMemo=d.tMemo;
+      if(d.aCats)S.aCats=d.aCats;
+      if(d.aMemo)S.aMemo=d.aMemo;
+      if(d.greeting)S.greeting=d.greeting;
+    }
+  }catch(e){}
+}
+
 let S={
   greeting:"お疲れ様です。退勤いたします。\n本日の研修内容です。",
   tab:"taikin",
@@ -324,14 +344,12 @@ function genCatsText(list){
 }
 function genTaikin(){
   let L=[S.greeting,"",genCatsText(S.tCats)];
-  if(S.tMemo.trim()){L.push("【備考】");L.push(S.tMemo.trim())}
   return L.join("\n");
 }
 function genAsa(){
-  let L=[genCatsText(S.aCats)];
-  if(S.aMemo.trim()){L.push("【備考】");L.push(S.aMemo.trim())}
-  return L.join("\n");
+  return genCatsText(S.aCats);
 }
+function curMemo(){return S.tab==="taikin"?S.tMemo:S.aMemo}
 function curText(){return S.tab==="taikin"?genTaikin():genAsa()}
 function curList(){return S.tab==="taikin"?S.tCats:S.aCats}
 function curPfx(){return S.tab==="taikin"?"t":"a"}
@@ -348,8 +366,8 @@ function rCats(list,pfx){
     o+=`<span class="bg">${th(list,ci).toFixed(1)}h</span></div>`;
     c.tasks.forEach((t,ti)=>{
       o+=`<div class="tr" data-task-pfx="${pfx}" data-task-ci="${ci}" data-task-ti="${ti}">`;
-      o+=`<input class="hi" type="text" inputmode="decimal" placeholder="h" value="${esc(t.h)}" oninput="uT('${pfx}',${ci},${ti},'h',this.value)">`;
-      o+=`<input class="ni" placeholder="タスク内容" value="${esc(t.n)}" oninput="uT('${pfx}',${ci},${ti},'n',this.value)">`;
+      o+=`<input class="hi" type="text" inputmode="decimal" placeholder="h" value="${esc(t.h)}" oninput="uT('${pfx}',${ci},${ti},'h',this.value)" onblur="R(1)">`;
+      o+=`<input class="ni" placeholder="タスク内容" value="${esc(t.n)}" oninput="uT('${pfx}',${ci},${ti},'n',this.value)" onblur="R(1)">`;
       o+=`<button class="br" onclick="dT('${pfx}',${ci},${ti})">×</button></div>`;
     });
     o+=`<div class="fr"><button class="b ba" onclick="aT('${pfx}',${ci})">+ タスク</button>`;
@@ -406,7 +424,7 @@ function R(keep){
   o+=`<div class="to">合計<span class="tn" style="color:${gc}">${g.toFixed(1)}</span><span class="tu">h</span></div>`;
   o+=`<div class="cd" style="border:none"><div class="st"><span class="dt" style="background:#f59e0b"></span>備考</div>`;
   const memo=S.tab==="taikin"?S.tMemo:S.aMemo;
-  o+=`<textarea style="min-height:60px;resize:vertical" placeholder="備考（任意）" oninput="setMemo(this.value)">${esc(memo)}</textarea></div>`;
+  o+=`<textarea style="min-height:60px;resize:vertical" placeholder="備考（任意）" oninput="setMemo(this.value)" onblur="R(1)">${esc(memo)}</textarea></div>`;
 
   o+=`<div class="ar">`;
   o+=`<button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
@@ -449,16 +467,17 @@ function R(keep){
 
 function getList(p){return p==="t"?S.tCats:S.aCats}
 function sw(t){S.tab=t;S.presets=-1;S.editLabel=-1;S.editPresets=false;R(1)}
-function setMemo(v){if(S.tab==="taikin")S.tMemo=v;else S.aMemo=v;R(1)}
-function uT(p,ci,ti,f,v){getList(p)[ci].tasks[ti][f]=v;R(1)}
-function aT(p,ci){getList(p)[ci].tasks.push({n:"",h:""});R(1)}
-function dT(p,ci,ti){const t=getList(p)[ci].tasks;t.length<=1?t[0]={n:"",h:""}:t.splice(ti,1);R(1)}
-function aPs(p,ci,n){const ts=getList(p)[ci].tasks;const ei=ts.findIndex(t=>!t.n&&!t.h);if(ei>=0){ts[ei].n=n}else{ts.push({n,h:""})}S.presets=-1;R(1)}
+function setMemo(v){if(S.tab==="taikin")S.tMemo=v;else S.aMemo=v;saveState()}
+function uT(p,ci,ti,f,v){getList(p)[ci].tasks[ti][f]=v;saveState()}
+function uTR(p,ci,ti,f,v){getList(p)[ci].tasks[ti][f]=v;saveState();R(1)}
+function aT(p,ci){getList(p)[ci].tasks.push({n:"",h:""});saveState();R(1)}
+function dT(p,ci,ti){const t=getList(p)[ci].tasks;t.length<=1?t[0]={n:"",h:""}:t.splice(ti,1);saveState();R(1)}
+function aPs(p,ci,n){const ts=getList(p)[ci].tasks;const ei=ts.findIndex(t=>!t.n&&!t.h);if(ei>=0){ts[ei].n=n}else{ts.push({n,h:""})}S.presets=-1;saveState();R(1)}
 function tPr(p,ci){if(S.presets===ci&&curPfx()===p){S.presets=-1}else{S.presets=ci}S.editPresets=false;R(1)}
-function aC(p){const l=getList(p);l.push({label:"新しいカテゴリ",color:COLS[l.length%COLS.length],tasks:[{n:"",h:""}]});R(1)}
-function rC(p,ci){const l=getList(p);if(l.length>1){l.splice(ci,1);R(1)}}
-function sG(){S.greeting=document.getElementById("gi").value;S.editGreet=false;R(1)}
-function sL(p,ci){getList(p)[ci].label=document.getElementById("li"+ci).value;S.editLabel=-1;R(1)}
+function aC(p){const l=getList(p);l.push({label:"新しいカテゴリ",color:COLS[l.length%COLS.length],tasks:[{n:"",h:""}]});saveState();R(1)}
+function rC(p,ci){const l=getList(p);if(l.length>1){l.splice(ci,1);saveState();R(1)}}
+function sG(){S.greeting=document.getElementById("gi").value;S.editGreet=false;saveState();R(1)}
+function sL(p,ci){getList(p)[ci].label=document.getElementById("li"+ci).value;S.editLabel=-1;saveState();R(1)}
 
 function addP(){const v=document.getElementById("newP")?.value?.trim();if(v&&!P.includes(v)){P.push(v);sP();R(1)}}
 function delP(pi){P.splice(pi,1);sP();R(1)}
@@ -470,8 +489,8 @@ function cR(){
   S.copied=true;R(1);setTimeout(()=>{S.copied=false;R(1)},1300);
 }
 
-function flowFromTaikin(){S.aCats=JSON.parse(JSON.stringify(S.tCats));R(1)}
-function flowFromAsahai(){S.tCats=JSON.parse(JSON.stringify(S.aCats));R(1)}
+function flowFromTaikin(){S.aCats=JSON.parse(JSON.stringify(S.tCats));saveState();R(1)}
+function flowFromAsahai(){S.tCats=JSON.parse(JSON.stringify(S.aCats));saveState();R(1)}
 
 // ========== インポート ==========
 function parseImportText(text){
@@ -545,19 +564,28 @@ function rImportSection(){
   return o;
 }
 
-function sendSlack(){
-  if(!WEBHOOK){S.showWebhook=true;R(1);return}
-  const t=curText();
-  fetch(WEBHOOK,{
+function postToSlack(text){
+  return fetch(WEBHOOK,{
     method:"POST",
     mode:"no-cors",
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
-    body:"payload="+encodeURIComponent(JSON.stringify({text:t}))
-  }).then(()=>{
-    S.sent="ok";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
-  }).catch(()=>{
-    S.sent="err";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
+    body:"payload="+encodeURIComponent(JSON.stringify({text}))
   });
+}
+
+async function sendSlack(){
+  if(!WEBHOOK){S.showWebhook=true;R(1);return}
+  const main=curText();
+  const memo=curMemo().trim();
+  try{
+    await postToSlack(main);
+    if(memo){
+      await postToSlack("【備考】\n"+memo);
+    }
+    S.sent="ok";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
+  }catch(e){
+    S.sent="err";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
+  }
 }
 
 function saveWebhook(){
@@ -606,9 +634,10 @@ function rWebhookSection(){
 }
 function rA(){
   if(S.tab==="taikin"){S.tCats=DC();S.tMemo=""}else{S.aCats=DC();S.aMemo=""}
-  S.presets=-1;S.editLabel=-1;S.editPresets=false;R(1);
+  S.presets=-1;S.editLabel=-1;S.editPresets=false;saveState();R(1);
 }
 
+loadState();
 R();
 </script>
 </body>
