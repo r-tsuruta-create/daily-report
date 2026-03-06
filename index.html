@@ -11,9 +11,6 @@
   .hdr{position:sticky;top:0;z-index:100;background:#0f0f0f;padding:16px 16px 0;border-bottom:1px solid #1a1a1f}
   .hdr-inner{max-width:560px;margin:0 auto}
   .hdr h1{font-size:18px;font-weight:700;color:#fff;margin-bottom:10px}
-  .hdr-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  .theme-btn{background:transparent;border:1px solid #3f3f46;border-radius:6px;color:#71717a;font-size:11px;padding:3px 8px;cursor:pointer;font-family:inherit}
-  .hdr .sub{font-size:12px;color:#52525b;margin-bottom:10px}
   .tabs{display:flex;gap:0;background:#1e1e24;border-radius:8px;padding:3px;margin-bottom:12px}
   .tab{flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;border:none;font-family:inherit}
   .tab.on{background:#2563eb;color:#fff}.tab.off{background:transparent;color:#71717a}
@@ -31,10 +28,17 @@
   .bg{background:#27272a;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;color:#a1a1aa;margin-left:8px}
   .cl{cursor:pointer;border-bottom:1px dashed #3f3f46;padding-bottom:1px}
   .cli{background:transparent;border:none;border-bottom:1px solid #3b82f6;color:#e4e4e7;font-size:13px;font-weight:600;padding:0 4px 2px;outline:none;width:150px}
-  .tr{display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:6px 4px;border-radius:6px;transition:transform .15s,box-shadow .15s;cursor:grab}
+  .tr{display:flex;gap:4px;align-items:center;margin-bottom:8px;padding:4px;border-radius:6px;transition:transform .15s,box-shadow .15s;cursor:grab}
   .tr:active{cursor:grabbing}
   .tr.drag-placeholder{opacity:.25;border:2px dashed #3b82f6}
-  .hi{width:60px!important;text-align:center;flex-shrink:0}
+  .h-box{display:flex;align-items:center;flex-shrink:0;background:#1a1a1f;border:1px solid #2a2a30;border-radius:6px;overflow:hidden;height:34px}
+  .h-val{width:36px;text-align:center;font-size:14px;font-weight:700;color:#fff;background:transparent;border:none;outline:none;font-family:inherit;padding:0;-moz-appearance:textfield}
+  .h-val::-webkit-inner-spin-button,.h-val::-webkit-outer-spin-button{display:none}
+  .h-arrows{display:flex;flex-direction:column;border-left:1px solid #2a2a30}
+  .h-arr{width:20px;height:17px;border:none;background:transparent;color:#52525b;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  .h-arr:first-child{border-bottom:1px solid #2a2a30}
+  .h-arr:active{background:#2563eb;color:#fff}
+  .h-h{font-size:11px;color:#52525b;flex-shrink:0;margin-left:2px}
   .ni{flex:1;min-width:0}
   .b{border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;-webkit-appearance:none}
   .b:active{transform:scale(.97)}
@@ -58,19 +62,19 @@
   .to{text-align:right;margin-bottom:16px;font-size:15px;font-weight:600}
   .tn{margin-left:8px;font-size:22px}.tu{color:#52525b;font-size:13px;margin-left:2px}
   .tp{background:#27272a;color:#a1a1aa;border:none;border-radius:8px;padding:10px;width:100%;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-bottom:8px}
+  .over-warn{background:#2d1f00;border:1px solid #78350f;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;color:#fcd34d;text-align:center}
+  .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fcd34d;border:1px solid #78350f;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.5);animation:fadeInOut 3s ease-in-out forwards;pointer-events:none}
+  @keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}85%{opacity:1}100%{opacity:0}}
   details>summary{font-size:12px;color:#52525b;cursor:pointer;margin:8px 0}
   .flow-btn{background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:10px;width:100%;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-bottom:16px}
   .flow-btn:active{transform:scale(.97);background:#2563eb;color:#fff}
   .guide{background:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px;margin-top:12px}
   .guide h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px}
   .guide .step{margin-bottom:16px}
-  .guide .step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#2563eb;color:#fff;border-radius:50%;font-size:12px;font-weight:700;margin-right:8px;flex-shrink:0}
   .guide .step-title{font-size:13px;font-weight:600;color:#e4e4e7;display:flex;align-items:center;margin-bottom:6px}
   .guide .step-desc{font-size:12px;color:#a1a1aa;line-height:1.7;padding-left:32px}
-  .drag-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:10px;background:#18181b}
   .drop-indicator{height:3px;background:#3b82f6;border-radius:2px;transition:all .1s;position:fixed;z-index:9998;pointer-events:none}
 
-  /* ===== ライトモード ===== */
   body.light{background:#e8e8e8;color:#18181b}
   body.light .hdr{background:#f0f0f0;border-bottom-color:#d4d4d4;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
   body.light .hdr h1{color:#18181b}
@@ -96,15 +100,21 @@
   body.light .guide h3{color:#18181b}
   body.light .guide .step-title{color:#18181b}
   body.light .guide .step-desc{color:#52525b}
-  body.light .drag-ghost{background:#fff}
-  body.light .theme-btn{border-color:#b4b4b4;color:#3f3f46}
   body.light details>summary{color:#52525b}
   body.light .st{color:#18181b}
   body.light .to{color:#18181b}
+  body.light .h-box{background:#fff;border-color:#c4c4c4}
+  body.light .h-val{color:#18181b}
+  body.light .h-arrows{border-left-color:#c4c4c4}
+  body.light .h-arr{color:#71717a}
+  body.light .h-arr:first-child{border-bottom-color:#c4c4c4}
+  body.light .h-arr:active{background:#2563eb;color:#fff}
+  body.light .h-h{color:#71717a}
+  body.light .over-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+  body.light .toast{background:#fffbeb;color:#92400e;border-color:#fcd34d}
 
   @media(max-width:480px){
     .hdr{padding:12px 12px 0}.bd{padding:12px 12px calc(120px + env(safe-area-inset-bottom))}
-    .hi{width:52px!important;font-size:13px;padding:6px 6px}
     .ni{font-size:13px;padding:6px 8px}.b{font-size:12px}
     .bc{padding:16px 16px!important;font-size:16px!important}
     .cd{padding:12px}.pc{font-size:11px;padding:5px 10px}
@@ -125,6 +135,10 @@ const DC=()=>[
   {label:"疑似PJ研修",color:"#2563eb",tasks:[{n:"",h:""}]},
   {label:"その他",color:"#64748b",tasks:[{n:"朝会・夕会等",h:"0.5"}]}
 ];
+const DC_EMPTY=()=>[
+  {label:"疑似PJ研修",color:"#2563eb",tasks:[{n:"",h:""}]},
+  {label:"その他",color:"#64748b",tasks:[{n:"",h:""}]}
+];
 
 let P=JSON.parse(localStorage.getItem("presets")||"null")||[...DEF_PRESETS];
 function sP(){localStorage.setItem("presets",JSON.stringify(P))}
@@ -134,267 +148,122 @@ function sW(v){WEBHOOK=v.trim();localStorage.setItem("webhook_url",WEBHOOK)}
 
 let THEME=localStorage.getItem("theme")||"dark";
 function toggleTheme(){THEME=THEME==="dark"?"light":"dark";localStorage.setItem("theme",THEME);applyTheme();R(1)}
-function applyTheme(){
-  if(THEME==="light"){document.body.classList.add("light")}
-  else{document.body.classList.remove("light")}
-}
+function applyTheme(){if(THEME==="light")document.body.classList.add("light");else document.body.classList.remove("light")}
 
-function saveState(){
-  localStorage.setItem("state",JSON.stringify({
-    tCats:S.tCats,tMemo:S.tMemo,
-    aCats:S.aCats,aMemo:S.aMemo,
-    greeting:S.greeting
-  }));
-}
-function loadState(){
-  try{
-    const d=JSON.parse(localStorage.getItem("state")||"null");
-    if(d){
-      if(d.tCats)S.tCats=d.tCats;
-      if(d.tMemo)S.tMemo=d.tMemo;
-      if(d.aCats)S.aCats=d.aCats;
-      if(d.aMemo)S.aMemo=d.aMemo;
-      if(d.greeting)S.greeting=d.greeting;
-    }
-  }catch(e){}
-}
+
+
+function saveState(){localStorage.setItem("state",JSON.stringify({tCats:S.tCats,tMemo:S.tMemo,aCats:S.aCats,aMemo:S.aMemo,greeting:S.greeting}))}
+function loadState(){try{const d=JSON.parse(localStorage.getItem("state")||"null");if(d){if(d.tCats)S.tCats=d.tCats;if(d.tMemo)S.tMemo=d.tMemo;if(d.aCats)S.aCats=d.aCats;if(d.aMemo)S.aMemo=d.aMemo;if(d.greeting)S.greeting=d.greeting}}catch(e){}}
 
 let S={
   greeting:"お疲れ様です。退勤いたします。\n本日の研修内容です。",
-  tab:"taikin",
-  tCats:DC(),tMemo:"",
-  aCats:DC(),aMemo:"",
+  tab:"taikin",tCats:DC(),tMemo:"",aCats:DC_EMPTY(),aMemo:"",
   editGreet:false,editLabel:-1,presets:-1,editPresets:false,
   preview:false,copied:false,sent:"",
   showWebhook:false,showImport:false,importError:false,
 };
 
-// ========== Touch drag system ==========
+function showToast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),3200)}
+
+// ========== Drag ==========
 let drag={active:false,type:null,pfx:null,fromCi:-1,fromTi:-1,ghost:null,indicator:null,targetIdx:-1,holdTimer:null,startY:0,startX:0,el:null,offsetY:0};
 
-function isInteractive(el){
-  const tag=el.tagName;
-  return tag==='INPUT'||tag==='TEXTAREA'||tag==='BUTTON'||tag==='SELECT'||el.contentEditable==='true'||el.closest('button')||el.closest('.pp')||el.closest('.fr');
-}
+function isInteractive(el){const tag=el.tagName;return tag==='INPUT'||tag==='TEXTAREA'||tag==='BUTTON'||tag==='SELECT'||el.contentEditable==='true'||el.closest('button')||el.closest('.pp')||el.closest('.fr')}
+function ghostBg(){return THEME==='light'?'#fff':'#18181b'}
 
 function findDraggable(el){
-  // カテゴリヘッダー(.st)やカテゴリ名をタッチ → カテゴリ移動
-  const stEl=el.closest('.st');
-  if(stEl){
-    const cd=stEl.closest('.cd[data-cat-ci]');
-    if(cd)return{type:'cat',el:cd,pfx:cd.dataset.catPfx,ci:parseInt(cd.dataset.catCi),ti:-1};
-  }
-  // タスク行
   const tr=el.closest('.tr[data-task-ti]');
   if(tr)return{type:'task',el:tr,pfx:tr.dataset.taskPfx,ci:parseInt(tr.dataset.taskCi),ti:parseInt(tr.dataset.taskTi)};
+  const cd=el.closest('.cd[data-cat-ci]');
+  if(cd)return{type:'cat',el:cd,pfx:cd.dataset.catPfx,ci:parseInt(cd.dataset.catCi),ti:-1};
   return null;
 }
 
 document.addEventListener('touchstart',function(e){
-  if(drag.active)return;
-  const touch=e.touches[0];
-  const target=document.elementFromPoint(touch.clientX,touch.clientY);
-  if(!target||isInteractive(target))return;
-  const info=findDraggable(target);
-  if(!info)return;
-
-  drag.startX=touch.clientX;drag.startY=touch.clientY;
-  drag.type=info.type;drag.pfx=info.pfx;drag.fromCi=info.ci;drag.fromTi=info.ti;
-
+  if(drag.active)return;const touch=e.touches[0];const target=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(!target||isInteractive(target))return;const info=findDraggable(target);if(!info)return;
+  drag.startX=touch.clientX;drag.startY=touch.clientY;drag.type=info.type;drag.pfx=info.pfx;drag.fromCi=info.ci;drag.fromTi=info.ti;
   drag.holdTimer=setTimeout(()=>{
-
-    drag.active=true;
-    drag.el=info.el;
-    const rect=info.el.getBoundingClientRect();
-    drag.offsetY=touch.clientY-rect.top;
-    // Ghost
+    drag.active=true;drag.el=info.el;const rect=info.el.getBoundingClientRect();drag.offsetY=touch.clientY-rect.top;
     const ghost=info.el.cloneNode(true);
-    ghost.style.cssText=`position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:${info.type==='cat'?'10px':'6px'};background:#18181b;width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;margin:0;`;
-    document.body.appendChild(ghost);
-    drag.ghost=ghost;
-    info.el.classList.add('drag-placeholder');
-    // Indicator
-    const ind=document.createElement('div');
-    ind.className='drop-indicator';
-    ind.style.display='none';
-    document.body.appendChild(ind);
-    drag.indicator=ind;
+    ghost.style.cssText=`position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:${info.type==='cat'?'10px':'6px'};background:${ghostBg()};width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;margin:0;`;
+    document.body.appendChild(ghost);drag.ghost=ghost;info.el.classList.add('drag-placeholder');
+    const ind=document.createElement('div');ind.className='drop-indicator';ind.style.display='none';document.body.appendChild(ind);drag.indicator=ind;
     if(navigator.vibrate)navigator.vibrate(20);
   },80);
 },{passive:true});
 
 document.addEventListener('touchmove',function(e){
-  if(!drag.active){
-    if(drag.holdTimer){
-      const t=e.touches[0];
-      if(Math.abs(t.clientX-drag.startX)>8||Math.abs(t.clientY-drag.startY)>8){
-        clearTimeout(drag.holdTimer);drag.holdTimer=null;
-      }
-    }
-    return;
-  }
-  e.preventDefault();
-  const touch=e.touches[0];
-  if(drag.ghost)drag.ghost.style.top=(touch.clientY-drag.offsetY)+'px';
-
-  // Find targets
-  const sel=drag.type==='task'
-    ?`[data-task-pfx="${drag.pfx}"][data-task-ci="${drag.fromCi}"]`
-    :`[data-cat-pfx="${drag.pfx}"]`;
-  const els=document.querySelectorAll(sel);
-  let closest=null,closestDist=Infinity,closestIdx=-1,before=true;
-  els.forEach(el=>{
-    const r=el.getBoundingClientRect();
-    const mid=r.top+r.height*0.5;
-    const dist=Math.abs(touch.clientY-mid);
-    if(dist<closestDist){
-      closestDist=dist;closest=el;
-      closestIdx=drag.type==='task'?parseInt(el.dataset.taskTi):parseInt(el.dataset.catCi);
-      before=touch.clientY<mid;
-    }
-  });
-
-  if(closest&&drag.indicator){
-    const r=closest.getBoundingClientRect();
-    const zone=r.height*0.0;
-    const inDeadZone=Math.abs(touch.clientY-(r.top+r.height*0.5))<zone;
-    if(!inDeadZone){
-      drag.indicator.style.display='block';
-      drag.indicator.style.left=r.left+'px';
-      drag.indicator.style.width=r.width+'px';
-      drag.indicator.style.top=(before?r.top-2:r.bottom)+'px';
-      drag.targetIdx=before?closestIdx:closestIdx+1;
-    }
-  }
-
-  // Auto-scroll
-  if(touch.clientY<60)window.scrollBy(0,-10);
-  else if(touch.clientY>window.innerHeight-60)window.scrollBy(0,10);
+  if(!drag.active){if(drag.holdTimer){const t=e.touches[0];if(Math.abs(t.clientX-drag.startX)>8||Math.abs(t.clientY-drag.startY)>8){clearTimeout(drag.holdTimer);drag.holdTimer=null}}return}
+  e.preventDefault();const touch=e.touches[0];if(drag.ghost)drag.ghost.style.top=(touch.clientY-drag.offsetY)+'px';
+  const sel=drag.type==='task'?`[data-task-pfx="${drag.pfx}"][data-task-ci="${drag.fromCi}"]`:`[data-cat-pfx="${drag.pfx}"]`;
+  const els=document.querySelectorAll(sel);let closest=null,closestDist=Infinity,closestIdx=-1,before=true;
+  els.forEach(el=>{const r=el.getBoundingClientRect();const mid=r.top+r.height*0.5;const dist=Math.abs(touch.clientY-mid);if(dist<closestDist){closestDist=dist;closest=el;closestIdx=drag.type==='task'?parseInt(el.dataset.taskTi):parseInt(el.dataset.catCi);before=touch.clientY<mid}});
+  if(closest&&drag.indicator){const r=closest.getBoundingClientRect();drag.indicator.style.display='block';drag.indicator.style.left=r.left+'px';drag.indicator.style.width=r.width+'px';drag.indicator.style.top=(before?r.top-2:r.bottom)+'px';drag.targetIdx=before?closestIdx:closestIdx+1}
+  if(touch.clientY<60)window.scrollBy(0,-10);else if(touch.clientY>window.innerHeight-60)window.scrollBy(0,10);
 },{passive:false});
-
-document.addEventListener('touchend',finishDrag);
-document.addEventListener('touchcancel',finishDrag);
+document.addEventListener('touchend',finishDrag);document.addEventListener('touchcancel',finishDrag);
 
 function finishDrag(){
-  clearTimeout(drag.holdTimer);drag.holdTimer=null;
-  if(!drag.active){drag.active=false;return}
-  if(drag.ghost){drag.ghost.remove();drag.ghost=null}
-  if(drag.indicator){drag.indicator.remove();drag.indicator=null}
+  clearTimeout(drag.holdTimer);drag.holdTimer=null;if(!drag.active){drag.active=false;return}
+  if(drag.ghost){drag.ghost.remove();drag.ghost=null}if(drag.indicator){drag.indicator.remove();drag.indicator=null}
   if(drag.el){drag.el.classList.remove('drag-placeholder');drag.el=null}
-
   const list=getList(drag.pfx);
   if(drag.targetIdx>=0){
-    if(drag.type==='task'){
-      const tasks=list[drag.fromCi].tasks;
-      let from=drag.fromTi,to=drag.targetIdx;
-      if(to>from)to--;
-      if(from!==to&&to>=0&&to<tasks.length){
-        const item=tasks.splice(from,1)[0];tasks.splice(to,0,item);
-      }
-    }else{
-      let from=drag.fromCi,to=drag.targetIdx;
-      if(to>from)to--;
-      if(from!==to&&to>=0&&to<list.length){
-        const item=list.splice(from,1)[0];list.splice(to,0,item);
-      }
-    }
+    if(drag.type==='task'){const tasks=list[drag.fromCi].tasks;let from=drag.fromTi,to=drag.targetIdx;if(to>from)to--;if(from!==to&&to>=0&&to<tasks.length){const item=tasks.splice(from,1)[0];tasks.splice(to,0,item)}}
+    else{let from=drag.fromCi,to=drag.targetIdx;if(to>from)to--;if(from!==to&&to>=0&&to<list.length){const item=list.splice(from,1)[0];list.splice(to,0,item)}}
   }
-  drag.active=false;drag.type=null;drag.targetIdx=-1;
-  R(1);
+  drag.active=false;drag.type=null;drag.targetIdx=-1;R(1);
 }
 
-// ========== Mouse drag (PC) ==========
 document.addEventListener('mousedown',function(e){
-  if(drag.active||e.button!==0)return;
-  const target=e.target;
-  if(isInteractive(target))return;
-  const info=findDraggable(target);
-  if(!info)return;
-  e.preventDefault();
-  drag.startX=e.clientX;drag.startY=e.clientY;
-  drag.type=info.type;drag.pfx=info.pfx;drag.fromCi=info.ci;drag.fromTi=info.ti;
-  drag._mouseInfo=info;
-  drag._mouseMoved=false;
+  if(drag.active||e.button!==0)return;const target=e.target;if(isInteractive(target))return;const info=findDraggable(target);if(!info)return;
+  e.preventDefault();drag.startX=e.clientX;drag.startY=e.clientY;drag.type=info.type;drag.pfx=info.pfx;drag.fromCi=info.ci;drag.fromTi=info.ti;drag._mouseInfo=info;drag._mouseMoved=false;
 });
-
 document.addEventListener('mousemove',function(e){
-  if(!drag._mouseInfo)return;
-  const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;
-  if(!drag.active&&!drag._mouseMoved){
-    if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
-    drag._mouseMoved=true;
-    drag.active=true;
-    const info=drag._mouseInfo;
-    drag.el=info.el;
-    const rect=info.el.getBoundingClientRect();
-    drag.offsetY=e.clientY-rect.top;
-    const ghost=info.el.cloneNode(true);
-    ghost.style.cssText=`position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:${info.type==='cat'?'10px':'6px'};background:#18181b;width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;margin:0;`;
-    document.body.appendChild(ghost);
-    drag.ghost=ghost;
-    info.el.classList.add('drag-placeholder');
-    const ind=document.createElement('div');
-    ind.className='drop-indicator';ind.style.display='none';
-    document.body.appendChild(ind);
-    drag.indicator=ind;
-  }
-  if(!drag.active)return;
-  e.preventDefault();
-  if(drag.ghost)drag.ghost.style.top=(e.clientY-drag.offsetY)+'px';
-  const sel=drag.type==='task'
-    ?`[data-task-pfx="${drag.pfx}"][data-task-ci="${drag.fromCi}"]`
-    :`[data-cat-pfx="${drag.pfx}"]`;
-  const els=document.querySelectorAll(sel);
-  let closest=null,closestDist=Infinity,closestIdx=-1,before=true;
-  els.forEach(el=>{
-    const r=el.getBoundingClientRect();
-    const mid=r.top+r.height/2;
-    const dist=Math.abs(e.clientY-mid);
-    if(dist<closestDist){closestDist=dist;closest=el;closestIdx=drag.type==='task'?parseInt(el.dataset.taskTi):parseInt(el.dataset.catCi);before=e.clientY<mid}
-  });
-  if(closest&&drag.indicator){
-    const r=closest.getBoundingClientRect();
-    const zone=r.height*0.0;
-    const inDeadZone=Math.abs(e.clientY-(r.top+r.height*0.5))<zone;
-    if(!inDeadZone){
-      drag.indicator.style.display='block';drag.indicator.style.left=r.left+'px';drag.indicator.style.width=r.width+'px';drag.indicator.style.top=(before?r.top-2:r.bottom)+'px';
-      drag.targetIdx=before?closestIdx:closestIdx+1;
-    }
-  }
-  if(e.clientY<60)window.scrollBy(0,-10);
-  else if(e.clientY>window.innerHeight-60)window.scrollBy(0,10);
+  if(!drag._mouseInfo)return;const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;
+  if(!drag.active&&!drag._mouseMoved){if(Math.abs(dx)<5&&Math.abs(dy)<5)return;drag._mouseMoved=true;drag.active=true;
+    const info=drag._mouseInfo;drag.el=info.el;const rect=info.el.getBoundingClientRect();drag.offsetY=e.clientY-rect.top;
+    const ghost=info.el.cloneNode(true);ghost.style.cssText=`position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:scale(1.03);box-shadow:0 8px 32px rgba(0,0,0,.5);border-radius:${info.type==='cat'?'10px':'6px'};background:${ghostBg()};width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;margin:0;`;
+    document.body.appendChild(ghost);drag.ghost=ghost;info.el.classList.add('drag-placeholder');
+    const ind=document.createElement('div');ind.className='drop-indicator';ind.style.display='none';document.body.appendChild(ind);drag.indicator=ind}
+  if(!drag.active)return;e.preventDefault();if(drag.ghost)drag.ghost.style.top=(e.clientY-drag.offsetY)+'px';
+  const sel=drag.type==='task'?`[data-task-pfx="${drag.pfx}"][data-task-ci="${drag.fromCi}"]`:`[data-cat-pfx="${drag.pfx}"]`;
+  const els=document.querySelectorAll(sel);let closest=null,closestDist=Infinity,closestIdx=-1,before=true;
+  els.forEach(el=>{const r=el.getBoundingClientRect();const mid=r.top+r.height/2;const dist=Math.abs(e.clientY-mid);if(dist<closestDist){closestDist=dist;closest=el;closestIdx=drag.type==='task'?parseInt(el.dataset.taskTi):parseInt(el.dataset.catCi);before=e.clientY<mid}});
+  if(closest&&drag.indicator){const r=closest.getBoundingClientRect();drag.indicator.style.display='block';drag.indicator.style.left=r.left+'px';drag.indicator.style.width=r.width+'px';drag.indicator.style.top=(before?r.top-2:r.bottom)+'px';drag.targetIdx=before?closestIdx:closestIdx+1}
+  if(e.clientY<60)window.scrollBy(0,-10);else if(e.clientY>window.innerHeight-60)window.scrollBy(0,10);
 });
-
-document.addEventListener('mouseup',function(){
-  if(drag._mouseInfo){
-    if(drag.active)finishDrag();
-    drag._mouseInfo=null;drag._mouseMoved=false;drag.active=false;
-  }
-});
+document.addEventListener('mouseup',function(){if(drag._mouseInfo){if(drag.active)finishDrag();drag._mouseInfo=null;drag._mouseMoved=false;drag.active=false}});
 
 // ========== Core ==========
 function th(l,ci){return l[ci].tasks.reduce((s,t)=>s+(parseFloat(t.h)||0),0)}
 function gtl(l){return l.reduce((s,_,i)=>s+th(l,i),0)}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
 
-function genCatsText(list){
-  let L=[];
-  list.forEach(c=>{const ts=c.tasks.filter(t=>t.n&&t.h);if(!ts.length)return;
-    L.push("\uFF1C"+c.label+"\uFF1E");
-    ts.forEach(t=>L.push(parseFloat(t.h).toFixed(1)+"h\uFF5C"+t.n))});
-  return L.join("\n");
-}
-function genTaikin(){
-  let L=[S.greeting,"",genCatsText(S.tCats)];
-  return L.join("\n");
-}
-function genAsa(){
-  return genCatsText(S.aCats);
-}
+function genCatsText(list){let L=[];list.forEach(c=>{const ts=c.tasks.filter(t=>t.n&&t.h);if(!ts.length)return;L.push("\uFF1C"+c.label+"\uFF1E");ts.forEach(t=>L.push(parseFloat(t.h).toFixed(1)+"h\uFF5C"+t.n))});return L.join("\n")}
+function genTaikin(){return[S.greeting,"",genCatsText(S.tCats)].join("\n")}
+function genAsa(){return genCatsText(S.aCats)}
 function curMemo(){return S.tab==="taikin"?S.tMemo:S.aMemo}
 function curText(){return S.tab==="taikin"?genTaikin():genAsa()}
 function curList(){return S.tab==="taikin"?S.tCats:S.aCats}
 function curPfx(){return S.tab==="taikin"?"t":"a"}
+
+// スピナー: 値変更時
+function chH(p,ci,ti,val){
+  let v=parseFloat(val)||0;
+  v=Math.round(v*2)/2;
+  if(v<0)v=0;if(v>8)v=8;
+  getList(p)[ci].tasks[ti].h=v%1===0?v.toString():v.toFixed(1);
+  saveState();R(1);
+}
+function adjH(p,ci,ti,delta){
+  const t=getList(p)[ci].tasks[ti];
+  let v=(parseFloat(t.h)||0)+delta;
+  if(v<0)v=0;if(v>8)v=8;
+  t.h=v%1===0?v.toString():v.toFixed(1);
+  saveState();R(1);
+}
 
 function rCats(list,pfx){
   let o="";
@@ -402,13 +271,16 @@ function rCats(list,pfx){
     o+=`<div class="cd" data-cat-pfx="${pfx}" data-cat-ci="${ci}">`;
     if(list.length>1)o+=`<button class="cx" onclick="rC('${pfx}',${ci})">×</button>`;
     o+=`<div class="st"><span class="dt" style="background:${c.color}"></span>`;
-    if(S.editLabel===ci&&curPfx()===pfx){
-      o+=`<input class="cli" id="li${ci}" value="${esc(c.label)}"><button class="b bsm" onclick="sL('${pfx}',${ci})">完了</button>`;
-    }else{o+=`<span class="cl" onclick="S.editLabel=${ci};R(1)">${esc(c.label)}</span>`}
+    if(S.editLabel===ci&&curPfx()===pfx){o+=`<input class="cli" id="li${ci}" value="${esc(c.label)}"><button class="b bsm" onclick="sL('${pfx}',${ci})">完了</button>`}
+    else{o+=`<span class="cl" onclick="S.editLabel=${ci};R(1)">${esc(c.label)}</span>`}
     o+=`<span class="bg">${th(list,ci).toFixed(1)}h</span></div>`;
     c.tasks.forEach((t,ti)=>{
+      const hv=parseFloat(t.h)||0;
       o+=`<div class="tr" data-task-pfx="${pfx}" data-task-ci="${ci}" data-task-ti="${ti}">`;
-      o+=`<input class="hi" type="text" inputmode="decimal" placeholder="h" value="${esc(t.h)}" oninput="uT('${pfx}',${ci},${ti},'h',this.value)" onblur="R(1)">`;
+      o+=`<div class="h-box">`;
+      o+=`<input class="h-val" type="number" min="0" max="8" step="0.5" value="${hv}" oninput="uT('${pfx}',${ci},${ti},'h',this.value)" onchange="chH('${pfx}',${ci},${ti},this.value)">`;
+      o+=`<div class="h-arrows"><button class="h-arr" onclick="adjH('${pfx}',${ci},${ti},0.5)">▲</button><button class="h-arr" onclick="adjH('${pfx}',${ci},${ti},-0.5)">▼</button></div>`;
+      o+=`</div><span class="h-h">h</span>`;
       o+=`<input class="ni" placeholder="タスク内容" value="${esc(t.n)}" oninput="uT('${pfx}',${ci},${ti},'n',this.value)" onblur="R(1)">`;
       o+=`<button class="br" onclick="dT('${pfx}',${ci},${ti})">×</button></div>`;
     });
@@ -416,16 +288,12 @@ function rCats(list,pfx){
     o+=`<button class="b ba" onclick="tPr('${pfx}',${ci})">プリセット</button></div>`;
     if(S.presets===ci&&curPfx()===pfx){
       o+=`<div class="pp">`;
-      if(S.editPresets){
-        P.forEach((p,pi)=>{o+=`<span class="pc">${esc(p)}<button class="pc-del" onclick="delP(${pi})">×</button></span>`});
+      if(S.editPresets){P.forEach((p,pi)=>{o+=`<span class="pc">${esc(p)}<button class="pc-del" onclick="delP(${pi})">×</button></span>`});
         o+=`<div class="preset-add-row"><input class="preset-add-input" id="newP" placeholder="新しいプリセット"><button class="preset-add-btn" onclick="addP()">追加</button></div>`;
-        o+=`<div style="width:100%;margin-top:4px"><button class="b bsm" onclick="S.editPresets=false;R(1)">完了</button></div>`;
-      }else{
-        P.forEach(p=>{o+=`<button class="pc" onclick="aPs('${pfx}',${ci},'${esc(p)}')">${esc(p)}</button>`});
-        o+=`<button onclick="S.editPresets=true;R(1)" class="b bsm" style="margin-top:4px;padding:6px 14px;font-size:12px;font-weight:600">⚙ プリセット編集</button>`;
-      }
-      o+=`</div>`;
-    }
+        o+=`<div style="width:100%;margin-top:4px"><button class="b bsm" onclick="S.editPresets=false;R(1)">完了</button></div>`}
+      else{P.forEach(p=>{o+=`<button class="pc" onclick="aPs('${pfx}',${ci},'${esc(p)}')">${esc(p)}</button>`});
+        o+=`<button onclick="S.editPresets=true;R(1)" class="b bsm" style="margin-top:4px;padding:6px 14px;font-size:12px;font-weight:600">⚙ プリセット編集</button>`}
+      o+=`</div>`}
     o+=`</div>`;
   });
   o+=`<button class="b ba" style="width:100%;padding:10px;margin-bottom:4px;text-align:center" onclick="aC('${pfx}')">+ カテゴリ追加</button>`;
@@ -433,19 +301,16 @@ function rCats(list,pfx){
 }
 
 function R(keep){
-  const sy=window.scrollY;
-  const list=curList();
-  const g=gtl(list),gc=g>=8?"#22c55e":g>=6?"#f59e0b":"#ef4444";
-  const pfx=curPfx();
-
+  const sy=window.scrollY;const list=curList();const g=gtl(list),gc=g>=8?"#22c55e":g>=6?"#f59e0b":"#ef4444";const pfx=curPfx();
   let hdr=`<div class="hdr-inner"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
   hdr+=`<h1 style="margin-bottom:0">日報ジェネレーター</h1>`;
   hdr+=`<button onclick="toggleTheme()" style="background:transparent;border:1px solid #3f3f46;border-radius:6px;padding:4px 10px;font-size:12px;color:${THEME==='dark'?'#a1a1aa':'#78716c'};cursor:pointer;font-family:inherit">${THEME==='dark'?'ライトモード':'ダークモード'}</button>`;
-  hdr+=`</div>`;
-  hdr+=`<div class="tabs">`;
+  hdr+=`</div><div class="tabs">`;
   hdr+=`<button class="tab ${S.tab==='taikin'?'on':'off'}" onclick="sw('taikin')">退勤報告</button>`;
   hdr+=`<button class="tab ${S.tab==='asahai'?'on':'off'}" onclick="sw('asahai')">朝会報告</button>`;
-  hdr+=`</div></div>`;
+  hdr+=`</div>`;
+  if(g>8)hdr+=`<div class="over-warn" style="margin-bottom:8px">⚠ 合計時間が8時間を超えています（${g.toFixed(1)}h）</div>`;
+  hdr+=`</div>`;
   document.getElementById("hdr").innerHTML=hdr;
 
   let o="";
@@ -453,17 +318,11 @@ function R(keep){
     const hasA=S.aCats.some(c=>c.tasks.some(t=>t.n&&t.h));
     if(hasA)o+=`<button class="flow-btn" onclick="flowFromAsahai()">朝会報告の内容を流用</button>`;
     o+=`<div class="greet-row">`;
-    if(S.editGreet){
-      o+=`<textarea id="gi" style="flex:1;min-height:40px;resize:vertical;font-size:13px">${esc(S.greeting)}</textarea><button class="b bsm" onclick="sG()">完了</button>`;
-    }else{
-      o+=`<span style="flex:1;font-size:13px;color:${THEME==='light'?'#3f3f46':'#a1a1aa'};white-space:pre-wrap">${esc(S.greeting)}</span><button class="b bsm" onclick="S.editGreet=true;R(1)">編集</button>`;
-    }
+    if(S.editGreet){o+=`<textarea id="gi" style="flex:1;min-height:40px;resize:vertical;font-size:13px">${esc(S.greeting)}</textarea><button class="b bsm" onclick="sG()">完了</button>`}
+    else{o+=`<span style="flex:1;font-size:13px;color:${THEME==='light'?'#3f3f46':'#a1a1aa'};white-space:pre-wrap">${esc(S.greeting)}</span><button class="b bsm" onclick="S.editGreet=true;R(1)">編集</button>`}
     o+=`</div>`;
   }
-  if(S.tab==="asahai"){
-    const hasT=S.tCats.some(c=>c.tasks.some(t=>t.n&&t.h));
-    if(hasT)o+=`<button class="flow-btn" onclick="flowFromTaikin()">退勤報告の内容を流用</button>`;
-  }
+  if(S.tab==="asahai"){const hasT=S.tCats.some(c=>c.tasks.some(t=>t.n&&t.h));if(hasT)o+=`<button class="flow-btn" onclick="flowFromTaikin()">退勤報告の内容を流用</button>`}
 
   o+=rCats(list,pfx);
   o+=`<div class="to">合計<span class="tn" style="color:${gc}">${g.toFixed(1)}</span><span class="tu">h</span></div>`;
@@ -471,39 +330,39 @@ function R(keep){
   const memo=S.tab==="taikin"?S.tMemo:S.aMemo;
   o+=`<textarea style="min-height:60px;resize:vertical" placeholder="備考（任意）" oninput="setMemo(this.value)" onblur="R(1)">${esc(memo)}</textarea></div>`;
 
-  o+=`<div class="ar">`;
-  o+=`<button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
-  o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':THEME==='light'?'#7c3aed':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button>`;
-  o+=`</div><div class="ar">`;
-  o+=`<button class="b bx" onclick="rA()">リセット</button>`;
-  o+=`<button class="b bx" onclick="S.showImport=!S.showImport;R(1)">📋 テキストから読み込む</button>`;
-  o+=`</div>`;
+  o+=`<div class="ar"><button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
+  o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':THEME==='light'?'#7c3aed':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button></div>`;
+  o+=`<div class="ar"><button class="b bx" onclick="rA()">リセット</button>`;
+  o+=`<button class="b bx" onclick="S.showImport=!S.showImport;R(1)">📋 テキストから読み込む</button></div>`;
   o+=rImportSection();
 
   o+=`<details style="margin:16px 0"><summary style="font-size:13px;color:#52525b;cursor:pointer"><span style="color:#3b82f6;text-decoration:underline">使い方・Slack投稿の流れはこちら</span></summary>`;
   o+=`<div class="guide">`;
-  o+=`<h3>退勤報告の流れ</h3>`;
-  o+=`<div class="step"><div class="step-title">① 「退勤報告」タブでタスクを入力</div></div>`;
-  o+=`<div class="step"><div class="step-title">② 「Slackにコピー」ボタンを押す</div></div>`;
+
+  o+=`<h3>初回セットアップ（1回だけ）</h3>`;
+  o+=`<div class="step"><div class="step-title">① Slack連携を設定する</div><div class="step-desc">ページ下部の「Slack連携設定」を開き、手順に沿ってWebhook URLを取得・保存する</div></div>`;
+  o+=`<div class="step"><div class="step-title">② 「DMに送信」ボタンでテスト送信</div><div class="step-desc">自分のSlack DMにメッセージが届けばOK</div></div>`;
+
+  o+=`<h3 style="margin-top:20px">毎日の退勤報告</h3>`;
+  o+=`<div class="step"><div class="step-title">① 「退勤報告」タブでタスクと時間を入力</div><div class="step-desc">プリセットや +/- ボタンで素早く入力できます</div></div>`;
+  o+=`<div class="step"><div class="step-title">② 「Slackにコピー」、または「DMに送信」を押す</div></div>`;
   o+=`<div class="step"><div class="step-title">③ Slackの #qnz_第2事業部 を開く</div></div>`;
   o+=`<div class="step"><div class="step-title">④ 当日の退勤スレッドに返信で貼り付け</div></div>`;
-  o+=`<h3 style="margin-top:20px">朝会報告の流れ</h3>`;
-  o+=`<div class="step"><div class="step-title">① 「朝会報告」タブを開く</div></div>`;
-  o+=`<div class="step"><div class="step-title">② 「退勤報告の内容を流用」で昨日の実績をセット</div><div class="step-desc">※前日の退勤報告を入力済みの場合に表示</div></div>`;
-  o+=`<div class="step"><div class="step-title">③ 今日やることに合わせてタスクを修正</div></div>`;
-  o+=`<div class="step"><div class="step-title">④ 「Slackにコピー」ボタンを押す</div></div>`;
-  o+=`<div class="step"><div class="step-title">⑤ Salesforce for Slack Botの「朝会報告を実施」を押す</div></div>`;
-  o+=`<div class="step"><div class="step-title">⑥ フォームの各欄に貼り付けて「完了」</div><div class="step-desc">昨日の実績 → コピー内容を貼り付け<br>今日の予定 → 必要に応じて編集して貼り付け<br>アピール・困りごと → 手入力</div></div>`;
+
+  o+=`<h3 style="margin-top:20px">毎朝の朝会報告</h3>`;
+  o+=`<div class="step"><div class="step-title">① 昨日と今日の内容のメッセージをコピー</div></div>`;
+  o+=`<div class="step"><div class="step-title">② Salesforce for Slack Botの「朝会報告を実施」</div></div>`;
+  o+=`<div class="step"><div class="step-title">③ フォームの各欄に貼り付けて「完了」</div></div>`;
+
+  o+=`<h3 style="margin-top:20px">便利な機能</h3>`;
+  o+=`<div class="step"><div class="step-title">🔄 朝会⇔退勤の内容を流用</div><div class="step-desc">前日の退勤内容を朝会に、朝会の内容を退勤にワンタップでコピーできます</div></div>`;
+  o+=`<div class="step"><div class="step-title">📋 テキストから読み込む</div><div class="step-desc">過去の日報テキストをそのまま貼り付けて復元できます</div></div>`;
+
   o+=`</div></details>`;
 
   o+=`<button class="tp" onclick="S.preview=!S.preview;R(1)">${S.preview?'プレビューを閉じる':'プレビューを表示'}</button>`;
   if(S.preview)o+=`<div class="pv">${esc(curText())}</div>`;
-
-  // Webhook設定 — プレビューの下、余白を置いて目立たせない
-  o+=`<div style="margin-top:48px;padding-top:24px;border-top:1px solid #1a1a1f">`;
-  o+=rWebhookSection();
-  o+=`</div>`;
-
+  o+=`<div style="margin-top:48px;padding-top:24px;border-top:1px solid #1a1a1f">${rWebhookSection()}</div>`;
   document.getElementById("bd").innerHTML=o;
   if(keep)window.scrollTo(0,sy);
   if(S.editGreet)document.getElementById("gi")?.focus();
@@ -514,101 +373,38 @@ function getList(p){return p==="t"?S.tCats:S.aCats}
 function sw(t){S.tab=t;S.presets=-1;S.editLabel=-1;S.editPresets=false;R(1)}
 function setMemo(v){if(S.tab==="taikin")S.tMemo=v;else S.aMemo=v;saveState()}
 function uT(p,ci,ti,f,v){getList(p)[ci].tasks[ti][f]=v;saveState()}
-function uTR(p,ci,ti,f,v){getList(p)[ci].tasks[ti][f]=v;saveState();R(1)}
 function aT(p,ci){getList(p)[ci].tasks.push({n:"",h:""});saveState();R(1)}
 function dT(p,ci,ti){const t=getList(p)[ci].tasks;t.length<=1?t[0]={n:"",h:""}:t.splice(ti,1);saveState();R(1)}
-function aPs(p,ci,n){const ts=getList(p)[ci].tasks;const ei=ts.findIndex(t=>!t.n&&!t.h);if(ei>=0){ts[ei].n=n}else{ts.push({n,h:""})}S.presets=-1;saveState();R(1)}
+function aPs(p,ci,n){const ts=getList(p)[ci].tasks;const ei=ts.findIndex(t=>!t.n);if(ei>=0){ts[ei].n=n}else{ts.push({n,h:""})}S.presets=-1;saveState();R(1)}
 function tPr(p,ci){if(S.presets===ci&&curPfx()===p){S.presets=-1}else{S.presets=ci}S.editPresets=false;R(1)}
 function aC(p){const l=getList(p);l.push({label:"新しいカテゴリ",color:COLS[l.length%COLS.length],tasks:[{n:"",h:""}]});saveState();R(1)}
 function rC(p,ci){const l=getList(p);if(l.length>1){l.splice(ci,1);saveState();R(1)}}
 function sG(){S.greeting=document.getElementById("gi").value;S.editGreet=false;saveState();R(1)}
 function sL(p,ci){getList(p)[ci].label=document.getElementById("li"+ci).value;S.editLabel=-1;saveState();R(1)}
-
 function addP(){const v=document.getElementById("newP")?.value?.trim();if(v&&!P.includes(v)){P.push(v);sP();R(1)}}
 function delP(pi){P.splice(pi,1);sP();R(1)}
 
-function cR(){
-  const t=curText();
-  if(navigator.clipboard){navigator.clipboard.writeText(t).catch(()=>{})}
-  else{const e=document.createElement("textarea");e.value=t;document.body.appendChild(e);e.select();document.execCommand("copy");document.body.removeChild(e)}
-  S.copied=true;R(1);setTimeout(()=>{S.copied=false;R(1)},1300);
-}
-
+function cR(){const t=curText();if(navigator.clipboard){navigator.clipboard.writeText(t).catch(()=>{})}else{const e=document.createElement("textarea");e.value=t;document.body.appendChild(e);e.select();document.execCommand("copy");document.body.removeChild(e)}S.copied=true;R(1);setTimeout(()=>{S.copied=false;R(1)},1300)}
 function flowFromTaikin(){S.aCats=JSON.parse(JSON.stringify(S.tCats));saveState();R(1)}
 function flowFromAsahai(){S.tCats=JSON.parse(JSON.stringify(S.aCats));saveState();R(1)}
 
-// ========== インポート ==========
 function parseImportText(text){
-  // 改行がない場合、＜＞/<>の前に改行を挿入して正規化
-  let normalized = text
-    .replace(/([＜<][^＞>]+[＞>])/g, '\n$1\n')  // カテゴリ前後に改行
-    .replace(/(\d+\.?\d*h)[　 ]/g, '\n$1｜')      // Xh＋全角スペース → 改行+｜
-    .replace(/【備考】/g, '\n【備考】\n')
-    .split('\n').map(l=>l.trim()).filter(l=>l);
-
-  const cats=[];
-  let cur=null;
-  let memoMode=false;
-  const memoLines=[];
-
-  for(const line of normalized){
-    if(line==='【備考】'){memoMode=true;continue}
-    if(memoMode){memoLines.push(line);continue}
-
-    const catMatch=line.match(/^[＜<](.+)[＞>]$/);
-    if(catMatch){
-      cur={label:catMatch[1],color:COLS[cats.length%COLS.length],tasks:[]};
-      cats.push(cur);
-      continue;
-    }
-    const taskMatch=line.match(/^([\d.]+)h[｜|](.+)$/);
-    if(taskMatch&&cur){
-      cur.tasks.push({h:taskMatch[1],n:taskMatch[2].trim()});
-    }
-  }
-
-  cats.forEach(c=>{if(c.tasks.length===0)c.tasks.push({n:'',h:''})});
-  return cats.length>0?{cats,memo:memoLines.join('\n')}:null;
+  let normalized=text.replace(/([＜<][^＞>]+[＞>])/g,'\n$1\n').replace(/(\d+\.?\d*h)[　 ]/g,'\n$1｜').replace(/【備考】/g,'\n【備考】\n').split('\n').map(l=>l.trim()).filter(l=>l);
+  const cats=[];let cur=null;let memoMode=false;const memoLines=[];
+  for(const line of normalized){if(line==='【備考】'){memoMode=true;continue}if(memoMode){memoLines.push(line);continue}
+    const catMatch=line.match(/^[＜<](.+)[＞>]$/);if(catMatch){cur={label:catMatch[1],color:COLS[cats.length%COLS.length],tasks:[]};cats.push(cur);continue}
+    const taskMatch=line.match(/^([\d.]+)h[｜|](.+)$/);if(taskMatch&&cur){cur.tasks.push({h:taskMatch[1],n:taskMatch[2].trim()})}}
+  cats.forEach(c=>{if(c.tasks.length===0)c.tasks.push({n:'',h:''})});return cats.length>0?{cats,memo:memoLines.join('\n')}:null;
 }
-
 function execImport(mode){
-  const text=document.getElementById('import_textarea')?.value||'';
-  const result=parseImportText(text);
-  if(!result){
-    S.importError=true;R(1);
-    setTimeout(()=>{S.importError=false;R(1)},3000);
-    return;
-  }
-  if(mode==='overwrite'){
-    if(S.tab==='taikin'){S.tCats=result.cats;if(result.memo)S.tMemo=result.memo;}
-    else{S.aCats=result.cats;if(result.memo)S.aMemo=result.memo;}
-  }else{
-    // 追加モード：既存カテゴリの後ろに足す
-    if(S.tab==='taikin'){
-      S.tCats=[...S.tCats,...result.cats];
-      if(result.memo)S.tMemo=(S.tMemo?S.tMemo+'\n':'')+result.memo;
-    }else{
-      S.aCats=[...S.aCats,...result.cats];
-      if(result.memo)S.aMemo=(S.aMemo?S.aMemo+'\n':'')+result.memo;
-    }
-  }
-  S.showImport=false;
-  R(1);
+  const text=document.getElementById('import_textarea')?.value||'';const result=parseImportText(text);
+  if(!result){S.importError=true;R(1);setTimeout(()=>{S.importError=false;R(1)},3000);return}
+  if(mode==='overwrite'){if(S.tab==='taikin'){S.tCats=result.cats;if(result.memo)S.tMemo=result.memo}else{S.aCats=result.cats;if(result.memo)S.aMemo=result.memo}}
+  else{if(S.tab==='taikin'){S.tCats=[...S.tCats,...result.cats];if(result.memo)S.tMemo=(S.tMemo?S.tMemo+'\n':'')+result.memo}else{S.aCats=[...S.aCats,...result.cats];if(result.memo)S.aMemo=(S.aMemo?S.aMemo+'\n':'')+result.memo}}
+  S.showImport=false;R(1);
 }
-
 function rImportSection(){
-  if(!S.showImport)return '';
-  const isDark=THEME==='dark';
-  const cardBg=isDark?'#18181b':'#fff';
-  const cardBorder=isDark?'#27272a':'#d4d4d4';
-  const subText=isDark?'#71717a':'#52525b';
-  const inputBg=isDark?'#0f0f0f':'#fff';
-  const inputBorder=isDark?'#334155':'#c4c4c4';
-  const inputColor=isDark?'#e4e4e7':'#18181b';
-  const addBtnBg=isDark?'#27272a':'#e4e4e7';
-  const addBtnColor=isDark?'#e4e4e7':'#18181b';
-  const addBtnBorder=isDark?'#3f3f46':'#b4b4b4';
-
+  if(!S.showImport)return '';const isDark=THEME==='dark';const cardBg=isDark?'#18181b':'#fff';const cardBorder=isDark?'#27272a':'#d4d4d4';const subText=isDark?'#71717a':'#52525b';const inputBg=isDark?'#0f0f0f':'#fff';const inputBorder=isDark?'#334155':'#c4c4c4';const inputColor=isDark?'#e4e4e7':'#18181b';const addBtnBg=isDark?'#27272a':'#e4e4e7';const addBtnColor=isDark?'#e4e4e7':'#18181b';const addBtnBorder=isDark?'#3f3f46':'#b4b4b4';
   let o=`<div style="background:${cardBg};border:1px solid ${cardBorder};border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,${isDark?'0.3':'0.08'})">`;
   o+=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">テキストから読み込む</div>`;
   o+=`<div style="font-size:12px;color:${subText};margin-bottom:8px">日報ジェネレーターで出力したテキストをそのまま貼り付けてください</div>`;
@@ -616,63 +412,63 @@ function rImportSection(){
   o+=`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">`;
   o+=`<button onclick="execImport('overwrite')" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">上書きして読み込む</button>`;
   o+=`<button onclick="execImport('append')" style="background:${addBtnBg};color:${addBtnColor};border:1px solid ${addBtnBorder};border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">追加して読み込む</button>`;
-  o+=`<button onclick="S.showImport=false;S.importError=false;R(1)" style="background:transparent;color:${subText};border:none;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit">キャンセル</button>`;
-  o+=`</div>`;
+  o+=`<button onclick="S.showImport=false;S.importError=false;R(1)" style="background:transparent;color:${subText};border:none;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit">キャンセル</button></div>`;
   if(S.importError)o+=`<div style="margin-top:8px;padding:8px 12px;background:${isDark?'#2d0f0f':'#fef2f2'};border:1px solid ${isDark?'#7f1d1d':'#fca5a5'};border-radius:6px;font-size:12px;color:${isDark?'#fca5a5':'#b91c1c'}">⚠ 読み込めませんでした。＜カテゴリ名＞と 0.5h｜タスク名 の形式で貼り付けてください。</div>`;
-  o+=`</div>`;
-  return o;
+  o+=`</div>`;return o;
 }
 
-function postToSlack(text){
-  return fetch(WEBHOOK,{
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},
-    body:"payload="+encodeURIComponent(JSON.stringify({text}))
+function postToSlack(text){return fetch(WEBHOOK,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"payload="+encodeURIComponent(JSON.stringify({text}))})}
+
+// 送信前に全inputの現在値をSに反映（フォーカス中でonblurが未発火のケース対策）
+function syncInputs(){
+  document.querySelectorAll('.tr[data-task-ti]').forEach(tr=>{
+    const pfx=tr.dataset.taskPfx,ci=parseInt(tr.dataset.taskCi),ti=parseInt(tr.dataset.taskTi);
+    const hi=tr.querySelector('.h-val');const ni=tr.querySelector('.ni');
+    if(hi){let v=parseFloat(hi.value)||0;v=Math.round(v*2)/2;if(v<0)v=0;getList(pfx)[ci].tasks[ti].h=v%1===0?v.toString():v.toFixed(1)}
+    if(ni)getList(pfx)[ci].tasks[ti].n=ni.value;
   });
+  const memoEl=document.querySelector('textarea[placeholder="備考（任意）"]');
+  if(memoEl){if(S.tab==='taikin')S.tMemo=memoEl.value;else S.aMemo=memoEl.value}
+  saveState();
 }
 
 async function sendSlack(){
-  if(!WEBHOOK){S.showWebhook=true;R(1);return}
-  const main=curText();
-  const memo=curMemo().trim();
-  try{
-    await postToSlack(main);
-    if(memo){
-      await postToSlack("【備考】\n"+memo);
-    }
-    S.sent="ok";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
-  }catch(e){
-    S.sent="err";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
+  if(!WEBHOOK){
+    showToast('Webhook URLが未設定です。下の手順を確認してください');
+    S.showWebhook=true;R(1);
+    setTimeout(()=>{const det=document.getElementById('webhook-details');if(det){det.open=true;det.scrollIntoView({behavior:'smooth',block:'center'})}},150);
+    return;
   }
+  syncInputs();
+  try{
+    // 1通目：退勤報告（挨拶あり）
+    const taikinFull=genTaikin();
+    await postToSlack(taikinFull);
+    // 2通目：退勤報告（挨拶なし＝カテゴリのみ）
+    const taikinCats=genCatsText(S.tCats);
+    if(taikinCats)await postToSlack(taikinCats);
+    // 退勤備考
+    const tM=S.tMemo.trim();
+    if(tM)await postToSlack("【備考】\n"+tM);
+    // 3通目：朝会報告（挨拶なし＝カテゴリのみ）※データがある場合のみ
+    const asaCats=genCatsText(S.aCats);
+    if(asaCats)await postToSlack(asaCats);
+    // 朝会備考
+    const aM=S.aMemo.trim();
+    if(aM)await postToSlack("【朝会備考】\n"+aM);
+    S.sent="ok";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
+  }catch(e){S.sent="err";R(1);setTimeout(()=>{S.sent="";R(1)},1300)}
 }
-
-function saveWebhook(){
-  const v=document.getElementById("wh_input")?.value||"";
-  sW(v);S.showWebhook=false;R(1);
-}
+function saveWebhook(){const v=document.getElementById("wh_input")?.value||"";sW(v);S.showWebhook=false;R(1)}
 
 function rWebhookSection(){
-  const isOpen=S.showWebhook;
-  const isDark=THEME==='dark';
-  const cardBg=isDark?'#18181b':'#fff';
-  const cardBorder=isDark?'#27272a':'#d4d4d4';
-  const innerBg=isDark?'#1e293b':'#f0f7ff';
-  const innerBorder=isDark?'#334155':'#bfdbfe';
-  const bodyText=isDark?'#94a3b8':'#374151';
-  const headText=isDark?'#e4e4e7':'#18181b';
-  const codeStyle=isDark?'background:#0f172a;color:#7dd3fc':'background:#e0f2fe;color:#0369a1';
-  const inputBg=isDark?'#0f0f0f':'#fff';
-  const inputBorder=isDark?'#334155':'#c4c4c4';
-  const inputColor=isDark?'#e4e4e7':'#18181b';
-  const subText=isDark?'#52525b':'#6b7280';
-  const divBorder=isDark?'#1a1a1f':'#e5e5e5';
+  const isOpen=S.showWebhook;const isDark=THEME==='dark';
+  const cardBg=isDark?'#18181b':'#fff';const cardBorder=isDark?'#27272a':'#d4d4d4';const innerBg=isDark?'#1e293b':'#f0f7ff';const innerBorder=isDark?'#334155':'#bfdbfe';const bodyText=isDark?'#94a3b8':'#374151';const headText=isDark?'#e4e4e7':'#18181b';const codeStyle=isDark?'background:#0f172a;color:#7dd3fc':'background:#e0f2fe;color:#0369a1';const inputBg=isDark?'#0f0f0f':'#fff';const inputBorder=isDark?'#334155':'#c4c4c4';const inputColor=isDark?'#e4e4e7':'#18181b';const subText=isDark?'#52525b':'#6b7280';
 
-  let o=`<details style="margin:0 0 8px" ${isOpen?'open':''}>`;
+  let o=`<details id="webhook-details" style="margin:0 0 8px" ${isOpen?'open':''}>`;
   o+=`<summary style="font-size:11px;color:${isDark?'#3f3f46':'#6b7280'};cursor:pointer;display:flex;align-items:center;gap:5px;list-style:none;user-select:none">`;
   o+=`<span style="color:${WEBHOOK?'#16a34a':'#71717a'};font-size:10px">${WEBHOOK?'●':'○'}</span>`;
-  o+=`<span style="text-decoration:underline;letter-spacing:0.02em">${WEBHOOK?'Slack連携設定（設定済み）':'Slack連携設定'}</span>`;
-  o+=`</summary>`;
+  o+=`<span style="text-decoration:underline;letter-spacing:0.02em">${WEBHOOK?'Slack連携設定（設定済み）':'Slack連携設定'}</span></summary>`;
   o+=`<div style="background:${cardBg};border:1px solid ${cardBorder};border-radius:10px;padding:16px;margin-top:8px;box-shadow:0 2px 6px rgba(0,0,0,${isDark?'0.3':'0.08'})">`;
 
   o+=`<div style="background:${innerBg};border:1px solid ${innerBorder};border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.9;color:${bodyText}">`;
@@ -687,31 +483,29 @@ function rWebhookSection(){
   o+=`1. 左メニューの「<b>OAuth &amp; Permissions</b>」をクリック<br>`;
   o+=`2. 「<b>Bot Token Scopes</b>」の「Add an OAuth Scope」をクリック<br>`;
   o+=`3. <b>chat:write</b> を検索して追加<br>`;
-  o+=`4. ページ上部の「<b>Install to Workspace</b>」ボタンをクリック → 「許可する」<br>`;
-  o+=`5. 左メニューの「<b>Incoming Webhooks</b>」に戻る`;
-  o+=`</div>`;
+  o+=`4. 左メニューの「<b>Install App</b>」をクリック<br>`;
+  o+=`5. 緑のボタンをクリックし、送り先を選択して「<b>許可する</b>」<br>`;
+  o+=`6. 左メニューの「<b>Incoming Webhooks</b>」に戻る</div>`;
   o+=`<div><b style="color:${headText}">⑥</b> 下にスクロールして「<b style="color:${headText}">Add New Webhook to Workspace</b>」をクリック</div>`;
   o+=`<div><b style="color:${headText}">⑦</b> 送信先に「<b style="color:${headText}">自分のDM（自分の名前）</b>」を選んで「許可する」</div>`;
   o+=`<div><b style="color:${headText}">⑧</b> 表示された <span style="${codeStyle};padding:1px 6px;border-radius:4px;font-family:monospace">https://hooks.slack.com/services/...</span> をコピーして下に貼り付け</div>`;
   o+=`<div style="margin-top:6px;color:${subText};font-size:11px">※ URLはこのブラウザにのみ保存されます。他の人には見えません。</div>`;
+  o+=`<div style="margin-top:8px;padding:8px 12px;background:${isDark?'#1a2332':'#f0f7ff'};border:1px solid ${isDark?'#1e3a5f':'#bfdbfe'};border-radius:6px;font-size:11px;line-height:1.8;color:${isDark?'#7dd3fc':'#1e40af'}">`;
+  o+=`🔒 URLが漏れてしまってもユーザー名やワークスペースの流出には繋がらず、決められた場所へメッセージの送信以外はできません。<br>`;
+  o+=`再発行する場合は、左メニューの「<b>Incoming Webhooks</b>」からURLを削除し、⑥から進めてください。</div>`;
   o+=`</div>`;
 
   o+=`<div style="display:flex;gap:8px;align-items:center">`;
   o+=`<input id="wh_input" type="url" placeholder="https://hooks.slack.com/services/..." value="${esc(WEBHOOK)}" style="flex:1;font-size:12px;padding:8px 10px;border-radius:6px;background:${inputBg};border:1px solid ${inputBorder};color:${inputColor};font-family:inherit">`;
-  o+=`<button onclick="saveWebhook()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">保存</button>`;
-  o+=`</div>`;
+  o+=`<button onclick="saveWebhook()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">保存</button></div>`;
   if(WEBHOOK)o+=`<button onclick="sW('');R(1)" style="background:transparent;color:${subText};border:none;font-size:11px;cursor:pointer;margin-top:6px;font-family:inherit">URLをリセット</button>`;
-  o+=`</div></details>`;
-  return o;
-}
-function rA(){
-  if(S.tab==="taikin"){S.tCats=DC();S.tMemo=""}else{S.aCats=DC();S.aMemo=""}
-  S.presets=-1;S.editLabel=-1;S.editPresets=false;saveState();R(1);
+
+  o+=`</div></details>`;return o;
 }
 
-loadState();
-applyTheme();
-R();
+function rA(){if(S.tab==="taikin"){S.tCats=DC();S.tMemo=""}else{S.aCats=DC_EMPTY();S.aMemo=""}S.presets=-1;S.editLabel=-1;S.editPresets=false;saveState();R(1)}
+
+loadState();applyTheme();R();
 </script>
 </body>
 </html>
