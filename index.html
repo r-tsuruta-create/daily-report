@@ -440,6 +440,11 @@ async function sendSlack(){
     return;
   }
   syncInputs();
+  const hasTaikin=S.tCats.some(c=>c.tasks.some(t=>t.n&&t.h));
+  const hasAsa=S.aCats.some(c=>c.tasks.some(t=>t.n&&t.h));
+  if(!hasTaikin&&!hasAsa){showToast('退勤報告と朝会報告を入力してください');return}
+  if(!hasTaikin){showToast('退勤報告が入力されていません');return}
+  if(!hasAsa){showToast('朝会報告が入力されていません');return}
   try{
     // 1通目：退勤報告（挨拶あり）
     const taikinFull=genTaikin();
@@ -475,7 +480,7 @@ function rWebhookSection(){
   o+=`<div style="font-weight:700;color:${headText};font-size:13px;margin-bottom:8px">Webhook URLの取得手順</div>`;
   o+=`<div><b style="color:${headText}">①</b> ブラウザで <span style="${codeStyle};padding:1px 6px;border-radius:4px;font-family:monospace">api.slack.com/apps</span> を開く</div>`;
   o+=`<div><b style="color:${headText}">②</b> 右上の「<b style="color:${headText}">Create New App</b>」→「<b style="color:${headText}">From scratch</b>」を選ぶ</div>`;
-  o+=`<div><b style="color:${headText}">③</b> App Name（例：日報bot）を入力し、自分の会社のワークスペースを選んで「<b style="color:${headText}">Create App</b>」</div>`;
+  o+=`<div><b style="color:${headText}">③</b> App Name（例：日報bot）を入力し、ワークスペースは「<b style="color:${headText}">Quanz</b>」を選んで「<b style="color:${headText}">Create App</b>」</div>`;
   o+=`<div><b style="color:${headText}">④</b> 左メニューの「<b style="color:${headText}">OAuth &amp; Permissions</b>（OAuthと権限）」をクリック</div>`;
   o+=`<div><b style="color:${headText}">⑤</b> 下にスクロールして「<b style="color:${headText}">Bot Token Scopes</b>（ボットトークンのスコープ）」の「Add an OAuth Scope」をクリックし、<b style="color:${headText}">chat:write</b> を検索して追加</div>`;
   o+=`<div><b style="color:${headText}">⑥</b> 左メニューの「<b style="color:${headText}">App Home</b>」をクリック</div>`;
@@ -483,12 +488,12 @@ function rWebhookSection(){
   o+=`<div><b style="color:${headText}">⑧</b> 左メニューの「<b style="color:${headText}">Incoming Webhooks</b>（受信Webhook）」をクリック</div>`;
   o+=`<div><b style="color:${headText}">⑨</b> トグルをオンにして「<b style="color:${headText}">Activate Incoming Webhooks</b>（受信Webhookを有効にする）」を有効化</div>`;
   o+=`<div><b style="color:${headText}">⑩</b> 下にスクロールして「<b style="color:${headText}">Add New Webhook to Workspace</b>（ワークスペースに新しいWebhookを追加する）」をクリック</div>`;
-  o+=`<div><b style="color:${headText}">⑪</b> 送信先に「<b style="color:${headText}">自分のDM（自分の名前）</b>」を選んで「許可する」</div>`;
+  o+=`<div><b style="color:${headText}">⑪</b> 送信先を選んで「許可する」<span style="color:${subText};font-size:11px">※ 自分宛てのDMでも可</span></div>`;
   o+=`<div><b style="color:${headText}">⑫</b> 表示された <span style="${codeStyle};padding:1px 6px;border-radius:4px;font-family:monospace">https://hooks.slack.com/services/...</span> をコピーして下に貼り付け</div>`;
   o+=`<div style="margin-top:6px;color:${subText};font-size:11px">※ URLはこのブラウザにのみ保存されます。他の人には見えません。</div>`;
   o+=`<div style="margin-top:8px;padding:8px 12px;background:${isDark?'#1a2332':'#f0f7ff'};border:1px solid ${isDark?'#1e3a5f':'#bfdbfe'};border-radius:6px;font-size:11px;line-height:1.8;color:${isDark?'#7dd3fc':'#1e40af'}">`;
   o+=`🔒 URLが漏れてしまってもユーザー名やワークスペースの流出には繋がらず、決められた場所へメッセージの送信以外はできません。<br>`;
-  o+=`再発行する場合は、左メニューの「<b>Incoming Webhooks</b>」からURLを削除し、⑥から進めてください。</div>`;
+  o+=`再発行する場合は、左メニューの「<b>Incoming Webhooks</b>」からURLを削除し、⑩から進めてください。</div>`;
   o+=`</div>`;
 
   o+=`<div style="display:flex;gap:8px;align-items:center">`;
