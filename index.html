@@ -75,6 +75,15 @@
   .guide .step-desc{font-size:12px;color:#a1a1aa;line-height:1.7;padding-left:32px}
   .drop-indicator{height:3px;background:#3b82f6;border-radius:2px;transition:all .1s;position:fixed;z-index:9998;pointer-events:none}
 
+  /* Auth bar */
+  .auth-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px}
+  .auth-bar img{width:20px;height:20px;border-radius:50%}
+  .auth-btn{background:#4285f4;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+  .auth-btn:active{transform:scale(.97)}
+  .auth-btn.out{background:#27272a;color:#a1a1aa}
+  .sync-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-left:4px}
+  .sync-dot.on{background:#22c55e}.sync-dot.off{background:#71717a}
+
   body.light{background:#e8e8e8;color:#18181b}
   body.light .hdr{background:#f0f0f0;border-bottom-color:#d4d4d4;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
   body.light .hdr h1{color:#18181b}
@@ -112,6 +121,7 @@
   body.light .h-h{color:#71717a}
   body.light .over-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
   body.light .toast{background:#fffbeb;color:#92400e;border-color:#fcd34d}
+  body.light .auth-btn.out{background:#e4e4e7;color:#3f3f46}
 
   @media(max-width:480px){
     .hdr{padding:12px 12px 0}.bd{padding:12px 12px calc(120px + env(safe-area-inset-bottom))}
@@ -125,7 +135,126 @@
 <body>
 <div class="hdr" id="hdr"></div>
 <div class="bd" id="bd"></div>
+
+<!-- Firebase SDK (compat版=CDNで使える) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <script>
+// ========== Firebase Init ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyCbDNiAiSzy56-ExT3NWqsYVfCHiY9DudI",
+  authDomain: "nippo-generator.firebaseapp.com",
+  projectId: "nippo-generator",
+  storageBucket: "nippo-generator.firebasestorage.app",
+  messagingSenderId: "69447370081",
+  appId: "1:69447370081:web:44ac06a844072b7fac7120",
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+let _saving = false;
+let _saveQueued = false;
+
+// ========== Auth ==========
+function googleLogin(){
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e=>showToast('ログイン失敗: '+e.message));
+}
+function googleLogout(){
+  auth.signOut();
+}
+auth.onAuthStateChanged(async user=>{
+  currentUser = user;
+  if(user){
+    // Firestoreからデータを読み込み
+    await loadFromFirestore();
+  }
+  R(1);
+});
+
+// ========== Firestore Save/Load ==========
+function userDocRef(){
+  if(!currentUser) return null;
+  return db.collection('users').doc(currentUser.uid);
+}
+
+async function loadFromFirestore(){
+  const ref = userDocRef();
+  if(!ref) return;
+  try{
+    const snap = await ref.get();
+    if(snap.exists){
+      const d = snap.data();
+      if(d.tCats) S.tCats = d.tCats;
+      if(d.tMemo !== undefined) S.tMemo = d.tMemo;
+      if(d.aCats) S.aCats = d.aCats;
+      if(d.aMemo !== undefined) S.aMemo = d.aMemo;
+      if(d.greeting) S.greeting = d.greeting;
+      if(d.presets) P = d.presets;
+      if(d.webhook) { WEBHOOK = d.webhook; localStorage.setItem("webhook_url", WEBHOOK); }
+      // ローカルにもキャッシュ
+      saveToLocal();
+    } else {
+      // Firestoreにデータがない→ローカルのデータをアップロード
+      await saveToFirestore();
+    }
+  }catch(e){ console.error('Firestore load error:', e); }
+}
+
+async function saveToFirestore(){
+  const ref = userDocRef();
+  if(!ref) return;
+  if(_saving){ _saveQueued = true; return; }
+  _saving = true;
+  try{
+    await ref.set({
+      tCats: S.tCats, tMemo: S.tMemo,
+      aCats: S.aCats, aMemo: S.aMemo,
+      greeting: S.greeting,
+      presets: P, webhook: WEBHOOK,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge: true});
+  }catch(e){ console.error('Firestore save error:', e); }
+  _saving = false;
+  if(_saveQueued){ _saveQueued = false; await saveToFirestore(); }
+}
+
+// デバウンス付き保存（入力中に毎回Firestoreに書かない）
+let _debounceTimer = null;
+function debouncedFirestoreSave(){
+  if(!currentUser) return;
+  clearTimeout(_debounceTimer);
+  _debounceTimer = setTimeout(()=> saveToFirestore(), 1500);
+}
+
+// ========== Local Storage (オフライン/未ログイン用) ==========
+function saveToLocal(){
+  localStorage.setItem("state", JSON.stringify({tCats:S.tCats, tMemo:S.tMemo, aCats:S.aCats, aMemo:S.aMemo, greeting:S.greeting}));
+  localStorage.setItem("presets", JSON.stringify(P));
+}
+
+function saveState(){
+  saveToLocal();
+  debouncedFirestoreSave();
+}
+
+function loadState(){
+  try{
+    const d=JSON.parse(localStorage.getItem("state")||"null");
+    if(d){
+      if(d.tCats) S.tCats=d.tCats;
+      if(d.tMemo) S.tMemo=d.tMemo;
+      if(d.aCats) S.aCats=d.aCats;
+      if(d.aMemo) S.aMemo=d.aMemo;
+      if(d.greeting) S.greeting=d.greeting;
+    }
+  }catch(e){}
+}
+
+// ========== App State ==========
 const DEF_PRESETS=["朝会・夕会等","MTG","定例MTG","内部MTG","顧客MTG","週間MTG準備","週間MTG",
 "実装","LWC実装","LWC改修、実装作業","Apex実装","VF実装","フロー改修作業","テスト","単体テスト","テスト仕様書作成",
 "設計","要件定義","コードレビュー","調査","資料作成","バグ修正","リリース作業",
@@ -141,19 +270,14 @@ const DC_EMPTY=()=>[
 ];
 
 let P=JSON.parse(localStorage.getItem("presets")||"null")||[...DEF_PRESETS];
-function sP(){localStorage.setItem("presets",JSON.stringify(P))}
+function sP(){localStorage.setItem("presets",JSON.stringify(P)); debouncedFirestoreSave();}
 
 let WEBHOOK=localStorage.getItem("webhook_url")||"";
-function sW(v){WEBHOOK=v.trim();localStorage.setItem("webhook_url",WEBHOOK)}
+function sW(v){WEBHOOK=v.trim();localStorage.setItem("webhook_url",WEBHOOK); debouncedFirestoreSave();}
 
 let THEME=localStorage.getItem("theme")||"dark";
 function toggleTheme(){THEME=THEME==="dark"?"light":"dark";localStorage.setItem("theme",THEME);applyTheme();R(1)}
 function applyTheme(){if(THEME==="light")document.body.classList.add("light");else document.body.classList.remove("light")}
-
-
-
-function saveState(){localStorage.setItem("state",JSON.stringify({tCats:S.tCats,tMemo:S.tMemo,aCats:S.aCats,aMemo:S.aMemo,greeting:S.greeting}))}
-function loadState(){try{const d=JSON.parse(localStorage.getItem("state")||"null");if(d){if(d.tCats)S.tCats=d.tCats;if(d.tMemo)S.tMemo=d.tMemo;if(d.aCats)S.aCats=d.aCats;if(d.aMemo)S.aMemo=d.aMemo;if(d.greeting)S.greeting=d.greeting}}catch(e){}}
 
 let S={
   greeting:"お疲れ様です。退勤いたします。\n本日の研修内容です。",
@@ -249,20 +373,13 @@ function curText(){return S.tab==="taikin"?genTaikin():genAsa()}
 function curList(){return S.tab==="taikin"?S.tCats:S.aCats}
 function curPfx(){return S.tab==="taikin"?"t":"a"}
 
-// スピナー: 値変更時
 function chH(p,ci,ti,val){
-  let v=parseFloat(val)||0;
-  v=Math.round(v*2)/2;
-  if(v<0)v=0;if(v>8)v=8;
-  getList(p)[ci].tasks[ti].h=v%1===0?v.toString():v.toFixed(1);
-  saveState();R(1);
+  let v=parseFloat(val)||0;v=Math.round(v*2)/2;if(v<0)v=0;if(v>8)v=8;
+  getList(p)[ci].tasks[ti].h=v%1===0?v.toString():v.toFixed(1);saveState();R(1);
 }
 function adjH(p,ci,ti,delta){
-  const t=getList(p)[ci].tasks[ti];
-  let v=(parseFloat(t.h)||0)+delta;
-  if(v<0)v=0;if(v>8)v=8;
-  t.h=v%1===0?v.toString():v.toFixed(1);
-  saveState();R(1);
+  const t=getList(p)[ci].tasks[ti];let v=(parseFloat(t.h)||0)+delta;if(v<0)v=0;if(v>8)v=8;
+  t.h=v%1===0?v.toString():v.toFixed(1);saveState();R(1);
 }
 
 function rCats(list,pfx){
@@ -300,12 +417,32 @@ function rCats(list,pfx){
   return o;
 }
 
+function rAuthBar(){
+  let o='<div class="auth-bar">';
+  if(currentUser){
+    const photo = currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="">` : '';
+    o+=photo;
+    o+=`<span style="color:${THEME==='light'?'#3f3f46':'#a1a1aa'}">${esc(currentUser.displayName||currentUser.email)}</span>`;
+    o+=`<span class="sync-dot on" title="同期中"></span>`;
+    o+=`<button class="auth-btn out" onclick="googleLogout()">ログアウト</button>`;
+  } else {
+    o+=`<button class="auth-btn" onclick="googleLogin()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Googleでログイン</button>`;
+    o+=`<span class="sync-dot off" title="未同期"></span>`;
+    o+=`<span style="font-size:11px;color:#52525b">ログインでPC⇔スマホ同期</span>`;
+  }
+  o+='</div>';
+  return o;
+}
+
 function R(keep){
   const sy=window.scrollY;const list=curList();const g=gtl(list),gc=g>=8?"#22c55e":g>=6?"#f59e0b":"#ef4444";const pfx=curPfx();
-  let hdr=`<div class="hdr-inner"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
+  let hdr=`<div class="hdr-inner">`;
+  hdr+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
   hdr+=`<h1 style="margin-bottom:0">日報ジェネレーター</h1>`;
   hdr+=`<button onclick="toggleTheme()" style="background:transparent;border:1px solid #3f3f46;border-radius:6px;padding:4px 10px;font-size:12px;color:${THEME==='dark'?'#a1a1aa':'#78716c'};cursor:pointer;font-family:inherit">${THEME==='dark'?'ライトモード':'ダークモード'}</button>`;
-  hdr+=`</div><div class="tabs">`;
+  hdr+=`</div>`;
+  hdr+=rAuthBar();
+  hdr+=`<div class="tabs">`;
   hdr+=`<button class="tab ${S.tab==='taikin'?'on':'off'}" onclick="sw('taikin')">退勤報告</button>`;
   hdr+=`<button class="tab ${S.tab==='asahai'?'on':'off'}" onclick="sw('asahai')">朝会報告</button>`;
   hdr+=`</div>`;
@@ -330,7 +467,7 @@ function R(keep){
   const memo=S.tab==="taikin"?S.tMemo:S.aMemo;
   o+=`<textarea style="min-height:60px;resize:vertical" placeholder="備考（任意）" oninput="setMemo(this.value)" onblur="R(1)">${esc(memo)}</textarea></div>`;
 
-  o+=`<div class="ar"><button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'Slackにコピー'}</button>`;
+  o+=`<div class="ar"><button class="b bc ${S.copied?'ok':''}" onclick="cR()">${S.copied?'コピーしました':'メッセージをコピー'}</button>`;
   o+=`<button class="b bc ${S.sent==='ok'?'ok':S.sent==='err'?'err':''}" style="background:${S.sent==='ok'?'#16a34a':S.sent==='err'?'#ef4444':THEME==='light'?'#7c3aed':'#4A154B'}" onclick="sendSlack()">${S.sent==='ok'?'送信しました':S.sent==='err'?'送信失敗':'DMに送信'}</button></div>`;
   o+=`<div class="ar"><button class="b bx" onclick="rA()">リセット</button>`;
   o+=`<button class="b bx" onclick="S.showImport=!S.showImport;R(1)">📋 テキストから読み込む</button></div>`;
@@ -345,7 +482,7 @@ function R(keep){
 
   o+=`<h3 style="margin-top:20px">毎日の退勤報告</h3>`;
   o+=`<div class="step"><div class="step-title">① 「退勤報告」タブでタスクと時間を入力</div><div class="step-desc">プリセットや +/- ボタンで素早く入力できます</div></div>`;
-  o+=`<div class="step"><div class="step-title">② 「Slackにコピー」、または「DMに送信」を押す</div></div>`;
+  o+=`<div class="step"><div class="step-title">② 「メッセージをコピー」、または「DMに送信」を押す</div></div>`;
   o+=`<div class="step"><div class="step-title">③ Slackの #qnz_第2事業部 を開く</div></div>`;
   o+=`<div class="step"><div class="step-title">④ 当日の退勤スレッドに返信で貼り付け</div></div>`;
 
@@ -357,6 +494,7 @@ function R(keep){
   o+=`<h3 style="margin-top:20px">便利な機能</h3>`;
   o+=`<div class="step"><div class="step-title">🔄 朝会⇔退勤の内容を流用</div><div class="step-desc">前日の退勤内容を朝会に、朝会の内容を退勤にワンタップでコピーできます</div></div>`;
   o+=`<div class="step"><div class="step-title">📋 テキストから読み込む</div><div class="step-desc">過去の日報テキストをそのまま貼り付けて復元できます</div></div>`;
+  o+=`<div class="step"><div class="step-title">🔐 Googleログインで同期</div><div class="step-desc">ログインするとPC⇔スマホでデータが自動同期されます。他の人のデータとは完全に分離されています。</div></div>`;
 
   o+=`</div></details>`;
 
@@ -401,7 +539,7 @@ function execImport(mode){
   if(!result){S.importError=true;R(1);setTimeout(()=>{S.importError=false;R(1)},3000);return}
   if(mode==='overwrite'){if(S.tab==='taikin'){S.tCats=result.cats;if(result.memo)S.tMemo=result.memo}else{S.aCats=result.cats;if(result.memo)S.aMemo=result.memo}}
   else{if(S.tab==='taikin'){S.tCats=[...S.tCats,...result.cats];if(result.memo)S.tMemo=(S.tMemo?S.tMemo+'\n':'')+result.memo}else{S.aCats=[...S.aCats,...result.cats];if(result.memo)S.aMemo=(S.aMemo?S.aMemo+'\n':'')+result.memo}}
-  S.showImport=false;R(1);
+  S.showImport=false;saveState();R(1);
 }
 function rImportSection(){
   if(!S.showImport)return '';const isDark=THEME==='dark';const cardBg=isDark?'#18181b':'#fff';const cardBorder=isDark?'#27272a':'#d4d4d4';const subText=isDark?'#71717a':'#52525b';const inputBg=isDark?'#0f0f0f':'#fff';const inputBorder=isDark?'#334155':'#c4c4c4';const inputColor=isDark?'#e4e4e7':'#18181b';const addBtnBg=isDark?'#27272a':'#e4e4e7';const addBtnColor=isDark?'#e4e4e7':'#18181b';const addBtnBorder=isDark?'#3f3f46':'#b4b4b4';
@@ -419,7 +557,6 @@ function rImportSection(){
 
 function postToSlack(text){return fetch(WEBHOOK,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"payload="+encodeURIComponent(JSON.stringify({text}))})}
 
-// 送信前に全inputの現在値をSに反映（フォーカス中でonblurが未発火のケース対策）
 function syncInputs(){
   document.querySelectorAll('.tr[data-task-ti]').forEach(tr=>{
     const pfx=tr.dataset.taskPfx,ci=parseInt(tr.dataset.taskCi),ti=parseInt(tr.dataset.taskTi);
@@ -446,19 +583,14 @@ async function sendSlack(){
   if(!hasTaikin){showToast('退勤報告が入力されていません');return}
   if(!hasAsa){showToast('朝会報告が入力されていません');return}
   try{
-    // 1通目：退勤報告（挨拶あり）
     const taikinFull=genTaikin();
     await postToSlack(taikinFull);
-    // 2通目：退勤報告（挨拶なし＝カテゴリのみ）
     const taikinCats=genCatsText(S.tCats);
     if(taikinCats)await postToSlack(taikinCats);
-    // 退勤備考
     const tM=S.tMemo.trim();
     if(tM)await postToSlack("【備考】\n"+tM);
-    // 3通目：朝会報告（挨拶なし＝カテゴリのみ）※データがある場合のみ
     const asaCats=genCatsText(S.aCats);
     if(asaCats)await postToSlack(asaCats);
-    // 朝会備考
     const aM=S.aMemo.trim();
     if(aM)await postToSlack("【朝会備考】\n"+aM);
     S.sent="ok";R(1);setTimeout(()=>{S.sent="";R(1)},1300);
