@@ -788,7 +788,7 @@ function viewSubheader(){
     const pct = Math.min(100, consumed/5*100);
     const txt = over ? 'var(--danger)' : 'var(--text)';
     return `
-    <div class="meter" style="background:${over?'var(--danger-bg)':'var(--surface)'};border-bottom-color:${over?'color-mix(in srgb,var(--danger) 35%,transparent)':'var(--border)'};">
+    <div class="subheader meter" style="background:${over?'var(--danger-bg)':'var(--surface)'};border-bottom-color:${over?'color-mix(in srgb,var(--danger) 35%,transparent)':'var(--border)'};">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
         <div style="font-size:22px;line-height:1;">🌮</div>
         <div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.2;">タコスを贈る</div>
