@@ -645,7 +645,7 @@ const App = {
   toggleOutput(){ state.outputOpen = !state.outputOpen; render(); },
   copyBlock(which){ const o = outputBlocks(); if(which===1) copyText(o.block1,'退勤報告をコピーしました'); else if(which===2) copyText(o.block2,'今日やったことをコピーしました'); else copyText(o.block3,'明日やることをコピーしました'); },
   copyAll(){ const o = outputBlocks(); copyText(o.block1 + '\n\n' + o.block2 + '\n\n' + o.block3, '3まとまりをコピーしました'); },
-  quickCopy(){ const o = outputBlocks(); state.day==='today' ? copyText(o.block1,'退勤報告をコピーしました') : copyText(o.block3,'明日やることをコピーしました'); },
+  quickCopy(){ const o = outputBlocks(); state.day==='today' ? copyText(o.block3,'朝会報告の内容をコピーしました') : copyText(o.block1,'退勤報告の内容をコピーしました'); },
   async sendSlack(){
     if (!state.webhook) {
       toast('Slack送信先を設定してください');
@@ -686,7 +686,6 @@ const App = {
 
   /* 設定: Slack / 連絡先 / テンプレート */
   setWebhook(v){ state.webhook = v; },
-  setAccumulated(v){ state.accumulated = Math.max(0, Number(v || 0)); render(); },
   toggleContacts(){ state.contactsOpen = !state.contactsOpen; render(); },
   setBulkText(v){ state.bulkText = v; },
   bulkImport(){
@@ -712,9 +711,9 @@ const SAVE_ACTIONS = new Set([
   'setTaskName','setTaskHours','bumpHours','deleteTask','dragEnterCat','dragEnterTask',
   'addPreset','removePreset','addBlock','removeBlock','bumpCount','setBody','pickRecipient',
   'removeRecipient','setTacoMode','setWebhook','bulkImport','removeContact','addTemplate',
-  'removeTemplate','copyPost','copyAllTacos','setAccumulated',
+  'removeTemplate','copyPost','copyAllTacos',
 ]);
-const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','setAccumulated','setTheme','setTone','setWebhook']);
+const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','setTheme','setTone','setWebhook']);
 Object.keys(App).forEach((name) => {
   if (!LOCAL_ONLY_ACTIONS.has(name) && !SAVE_ACTIONS.has(name)) return;
   const original = App[name];
@@ -757,7 +756,7 @@ function viewHeader(){
 function viewSubheader(){
   if (state.tab === 'report') {
     const isToday = state.day === 'today';
-    const quickLabel = isToday ? '退勤報告をコピー' : '明日やることをコピー';
+    const quickLabel = isToday ? '朝会報告の内容をコピー' : '退勤報告の内容をコピー';
     return `
     <div class="subheader">
       <div class="seg">
@@ -965,10 +964,6 @@ function viewTacos(){
 
   return `
   <div class="tab">
-    <div style="display:flex;align-items:center;gap:10px;padding:2px 4px;">
-      <div style="font-size:24px;">🌮</div>
-      <div style="flex:1;"><div style="font-size:19px;font-weight:700;">タコスを贈る</div></div>
-    </div>
     <div style="display:flex;flex-direction:column;gap:11px;">${blocks}</div>
     <button class="btn-dashed" onclick="App.addBlock()">${I.plus}宛先＋文面ブロックを追加</button>
 
@@ -1098,14 +1093,6 @@ function viewSettings(){
         <textarea class="field-input" data-k="bulk" rows="4" style="line-height:1.7;border-radius:11px;" oninput="App.setBulkText(this.value)" placeholder="1行に1人ずつ名前を貼り付け（「＠」は不要）&#10;例：&#10;メンバーA&#10;メンバーB&#10;メンバーC">${esc(state.bulkText)}</textarea>
         <button class="btn-primary" style="width:100%;margin-top:9px;padding:11px;border-radius:11px;font-size:13px;" onclick="App.bulkImport()">一括登録</button>
         <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">改行が人の区切りです。「＠」は文面生成時に自動で付きます。登録した相手はタコスタブの宛先に表示されます。</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section-label">本日のタコス消費</div>
-      <div class="card" style="padding:14px;">
-        <input class="field-input mono" type="number" min="0" value="${state.accumulated}" oninput="App.setAccumulated(this.value)" aria-label="本日のタコス消費数" />
-        <div style="font-size:10.5px;color:var(--faint);margin-top:8px;">コピーで自動加算されます。必要な場合は手動で調整できます。</div>
       </div>
     </div>
 
