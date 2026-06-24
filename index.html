@@ -605,8 +605,14 @@ function tacoPosts(){
 /* =========================================================================
    アクション（App.* ）— テンプレートの onclick / oninput から呼ぶ
    ========================================================================= */
-const copyTargetDay = () => state.day === 'today' ? 'tomorrow' : 'today';
-const groupsOf = () => copyTargetDay() === 'today' ? state.today : state.tomorrow;
+const groupsOf = () => state.day === 'today' ? state.today : state.tomorrow;
+function cloneGroups(groups){
+  return groups.map(g => ({
+    id: uid(),
+    category: g.category,
+    tasks: g.tasks.map(t => ({ id: uid(), hours: t.hours, name: t.name }))
+  }));
+}
 const findCat = (catId) => groupsOf().find(g => g.id === catId);
 
 const App = {
@@ -646,7 +652,16 @@ const App = {
   toggleOutput(){ state.outputOpen = !state.outputOpen; render(); },
   copyBlock(which){ const o = outputBlocks(); if(which===1) copyText(o.block1,'退勤報告をコピーしました'); else if(which===2) copyText(o.block2,'今日やったことをコピーしました'); else copyText(o.block3,'明日やることをコピーしました'); },
   copyAll(){ const o = outputBlocks(); copyText(o.block1 + '\n\n' + o.block2 + '\n\n' + o.block3, '3まとまりをコピーしました'); },
-  quickCopy(){ const o = outputBlocks(); state.day==='today' ? copyText(o.block3,'朝会報告の内容をコピーしました') : copyText(o.block1,'退勤報告の内容をコピーしました'); },
+  quickCopy(){
+    if (state.day === 'today') {
+      state.today = cloneGroups(state.tomorrow);
+      toast('朝会報告の内容を退勤報告へコピーしました');
+    } else {
+      state.tomorrow = cloneGroups(state.today);
+      toast('退勤報告の内容を朝会報告へコピーしました');
+    }
+    render();
+  },
   async sendSlack(){
     if (!state.webhook) {
       toast('Slack送信先を設定してください');
@@ -712,9 +727,9 @@ const SAVE_ACTIONS = new Set([
   'setTaskName','setTaskHours','bumpHours','deleteTask','dragEnterCat','dragEnterTask',
   'addPreset','removePreset','addBlock','removeBlock','bumpCount','setBody','pickRecipient',
   'removeRecipient','setTacoMode','setWebhook','bulkImport','removeContact','addTemplate',
-  'removeTemplate','copyPost','copyAllTacos',
+  'removeTemplate','copyPost','copyAllTacos','quickCopy',
 ]);
-const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','setTheme','setTone','setWebhook']);
+const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','quickCopy','setTheme','setTone','setWebhook']);
 Object.keys(App).forEach((name) => {
   if (!LOCAL_ONLY_ACTIONS.has(name) && !SAVE_ACTIONS.has(name)) return;
   const original = App[name];
@@ -794,12 +809,11 @@ function viewSubheader(){
 /* ---- 日報タブ ---- */
 function viewReport(){
   const isToday = state.day === 'today';
-  const targetIsToday = copyTargetDay() === 'today';
   const groups = groupsOf();
   const dayHours = fmtHours(groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0));
-  const dayLabel = targetIsToday ? '退勤報告' : '朝会報告';
+  const dayLabel = isToday ? '退勤報告' : '朝会報告';
 
-  const greetingCard = targetIsToday ? `
+  const greetingCard = isToday ? `
     <div class="card" style="overflow:hidden;">
       <button class="collapse-head" style="padding:13px 15px;gap:11px;" onclick="App.toggleGreeting()">
         <span style="display:flex;align-items:center;gap:11px;min-width:0;">
