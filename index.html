@@ -88,7 +88,7 @@ input[type=number]{-moz-appearance:textfield;}
   overflow-y:auto; overflow-x:hidden; padding:16px 16px calc(88px + env(safe-area-inset-bottom));
 }
 .app[data-tab="report"] .scroll{top:181px;}
-.app[data-tab="tacos"] .scroll{top:130px;}
+.app[data-tab="tacos"] .scroll{top:166px;}
 .app[data-tab="settings"] .scroll{top:68px;}
 .tab{display:flex; flex-direction:column; gap:14px; animation:fadeIn .25s ease;}
 
@@ -605,7 +605,8 @@ function tacoPosts(){
 /* =========================================================================
    アクション（App.* ）— テンプレートの onclick / oninput から呼ぶ
    ========================================================================= */
-const groupsOf = () => state.day === 'today' ? state.today : state.tomorrow;
+const copyTargetDay = () => state.day === 'today' ? 'tomorrow' : 'today';
+const groupsOf = () => copyTargetDay() === 'today' ? state.today : state.tomorrow;
 const findCat = (catId) => groupsOf().find(g => g.id === catId);
 
 const App = {
@@ -773,9 +774,13 @@ function viewSubheader(){
     const txt = over ? 'var(--danger)' : 'var(--text)';
     return `
     <div class="meter" style="background:${over?'var(--danger-bg)':'var(--surface)'};border-bottom-color:${over?'color-mix(in srgb,var(--danger) 35%,transparent)':'var(--border)'};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+        <div style="font-size:22px;line-height:1;">🌮</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.2;">タコスを贈る</div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
         <div style="font-size:12px;font-weight:700;color:${txt};display:flex;align-items:center;gap:7px;">
-          本日の消費
+          本日のタコス消費
           ${over?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--danger);">${I.warn}上限超過</span>`:''}
         </div>
         <div class="mono" style="font-weight:700;font-size:13.5px;color:${txt};">${consumed} / 5</div>
@@ -789,11 +794,12 @@ function viewSubheader(){
 /* ---- 日報タブ ---- */
 function viewReport(){
   const isToday = state.day === 'today';
+  const targetIsToday = copyTargetDay() === 'today';
   const groups = groupsOf();
   const dayHours = fmtHours(groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0));
-  const dayLabel = isToday ? '退勤報告' : '朝会報告';
+  const dayLabel = targetIsToday ? '退勤報告' : '朝会報告';
 
-  const greetingCard = isToday ? `
+  const greetingCard = targetIsToday ? `
     <div class="card" style="overflow:hidden;">
       <button class="collapse-head" style="padding:13px 15px;gap:11px;" onclick="App.toggleGreeting()">
         <span style="display:flex;align-items:center;gap:11px;min-width:0;">
