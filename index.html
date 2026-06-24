@@ -601,6 +601,9 @@ function tacoPosts(){
     return { num: i + 1, count: c, people, consume: people * c, text };
   });
 }
+function tacoDraftConsumption(){
+  return state.blocks.reduce((sum, b) => sum + b.recipients.length * Math.max(0, Number(b.count || 0)), 0);
+}
 
 /* =========================================================================
    アクション（App.* ）— テンプレートの onclick / oninput から呼ぶ
@@ -626,17 +629,17 @@ const App = {
 
   /* 挨拶文 */
   toggleGreeting(){ state.greetingOpen = !state.greetingOpen; render(); },
-  setGreeting(v){ state.greeting = v; render(); },
+  setGreeting(v){ state.greeting = v; },
 
   /* 案件 / タスク */
   startEditCat(catId){ state.editingCat = catId; render(); setTimeout(() => { const el = document.querySelector('[data-k="cat-'+catId+'"]'); if(el){ el.focus(); el.select && el.select(); } }, 20); },
   stopEditCat(){ state.editingCat = null; render(); },
   catKey(e){ if(e.key === 'Enter'){ state.editingCat = null; render(); } },
-  setCategory(catId, v){ const g = findCat(catId); if(g) g.category = v; render(); },
+  setCategory(catId, v){ const g = findCat(catId); if(g) g.category = v; },
   deleteCategory(catId){ const arr = groupsOf(); const i = arr.findIndex(g => g.id === catId); if(i>=0) arr.splice(i,1); render(); },
   addCategory(){ groupsOf().push({ id: uid(), category: '新規案件', tasks: [{ id: uid(), hours: 0.5, name: '' }] }); render(); },
   addTask(catId, name){ const g = findCat(catId); if(g) g.tasks.push({ id: uid(), hours: 0.5, name: name }); render(); },
-  setTaskName(catId, taskId, v){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.name = v; render(); },
+  setTaskName(catId, taskId, v){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.name = v; },
   setTaskHours(catId, taskId, v){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.hours = Math.max(0, Math.round((parseFloat(v)||0)*2)/2); render(); },
   bumpHours(catId, taskId, d){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.hours = Math.max(0, Math.round((t.hours + d)*2)/2); render(); },
   deleteTask(catId, taskId){ const g = findCat(catId); if(g){ const i = g.tasks.findIndex(t => t.id === taskId); if(i>=0) g.tasks.splice(i,1);} render(); },
@@ -690,7 +693,7 @@ const App = {
   addBlock(){ state.blocks.push({ id: uid(), recipients: [], count: 1, body: '' }); render(); },
   removeBlock(id){ state.blocks = state.blocks.filter(b => b.id !== id); render(); },
   bumpCount(id, d){ const b = state.blocks.find(b => b.id === id); if(b) b.count = Math.max(1, Math.min(9, b.count + d)); render(); },
-  setBody(id, v){ const b = state.blocks.find(b => b.id === id); if(b) b.body = v; render(); },
+  setBody(id, v, shouldRender){ const b = state.blocks.find(b => b.id === id); if(b) b.body = v; if(shouldRender) render(); },
   pickRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b && name && !b.recipients.includes(name)) b.recipients.push(name); render(); },
   removeRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b) b.recipients = b.recipients.filter(r => r !== name); render(); },
 
@@ -783,7 +786,7 @@ function viewSubheader(){
     </div>`;
   }
   if (state.tab === 'tacos') {
-    const consumed = state.accumulated;
+    const consumed = tacoDraftConsumption();
     const over = consumed > 5;
     const pct = Math.min(100, consumed/5*100);
     const txt = over ? 'var(--danger)' : 'var(--text)';
@@ -826,7 +829,7 @@ function viewReport(){
         <span class="chev" style="transform:rotate(${state.greetingOpen?180:0}deg);">${I.chev}</span>
       </button>
       ${state.greetingOpen ? `
-      <div style="padding:0 15px 15px;animation:popIn .2s ease;">
+      <div style="padding:0 15px 15px;">
         <textarea rows="2" data-k="greeting" oninput="App.setGreeting(this.value)" style="width:100%;resize:none;border:1px solid var(--border);background:var(--surface2);border-radius:11px;padding:11px 12px;font-size:13.5px;line-height:1.6;outline:none;">${esc(state.greeting)}</textarea>
         <div style="font-size:11px;color:var(--faint);margin-top:6px;">「退勤報告」の冒頭にのみ挿入されます。</div>
       </div>` : ''}
@@ -937,7 +940,7 @@ function viewTacos(){
       .map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
     const tplChips = state.templates.map(t => {
       const active = b.body.trim() === t.body;
-      return `<button class="tpl-chip ${active?'is-active':''}" onclick="App.setBody(${b.id},'${esc(t.body).replace(/'/g,"\\'")}')">${esc(t.label)}</button>`;
+      return `<button class="tpl-chip ${active?'is-active':''}" onclick="App.setBody(${b.id},'${esc(t.body).replace(/'/g,"\\'")}',true)">${esc(t.label)}</button>`;
     }).join('');
     return `
     <div class="block">
