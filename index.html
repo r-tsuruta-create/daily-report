@@ -697,8 +697,8 @@ const App = {
   /* タコス: 出力 */
   toggleTacoOutput(){ state.tacoOutputOpen = !state.tacoOutputOpen; render(); },
   setTacoMode(m){ state.tacoMode = m; render(); },
-  copyPost(num){ const p = tacoPosts().find(p => p.num === num); if(!p) return; state.accumulated += p.consume; copyText(p.text, '投稿'+num+'をコピー'); },
-  copyAllTacos(){ const posts = tacoPosts(); const all = posts.map(p => p.text).join('\n\n'); state.accumulated += posts.reduce((a,p)=>a+p.consume,0); copyText(all, '全'+posts.length+'投稿をコピー'); },
+  copyPost(num){ const p = tacoPosts().find(p => p.num === num); if(!p) return; syncDailyUsage(); state.accumulated += p.consume; render(); copyText(p.text, '投稿'+num+'をコピー'); },
+  copyAllTacos(){ const posts = tacoPosts(); if(!posts.length) return; const all = posts.map(p => p.text).join('\n\n'); syncDailyUsage(); state.accumulated += posts.reduce((a,p)=>a+p.consume,0); render(); copyText(all, '全'+posts.length+'投稿をコピー'); },
 
   /* 設定: Slack / 連絡先 / テンプレート */
   setWebhook(v){ state.webhook = v; },
