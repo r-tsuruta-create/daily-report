@@ -1,1859 +1,1199 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>日報ジェネレーター</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    :root {
-      --bg: #f3f2ee;
-      --bg2: #e9e7e1;
-      --surface: #ffffff;
-      --surface2: #faf9f6;
-      --text: #21222a;
-      --muted: #71727f;
-      --faint: #c5ced9;
-      --border: #e7e5df;
-      --border2: #efede9;
-      --danger: #d0463b;
-      --danger-bg: #fbeae8;
-      --ok: #1f9d64;
-      --accent: #3a6fd0;
-      --shadow: 0 1px 2px rgba(20, 20, 30, .05), 0 10px 30px -18px rgba(20, 20, 30, .22);
-    }
-
-    body.theme-dark {
-      --bg: #17191f;
-      --bg2: #0f1116;
-      --surface: #20232b;
-      --surface2: #282c35;
-      --text: #f0f1f4;
-      --muted: #b6bac6;
-      --faint: #858b98;
-      --border: #323744;
-      --border2: #2c303a;
-      --danger-bg: #3a1d1b;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 16px 40px -24px rgba(0, 0, 0, .8);
-    }
-
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-    }
-
-    body {
-      background: var(--bg2);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
-    }
-
-    button,
-    input,
-    textarea,
-    select {
-      color: inherit;
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    input,
-    textarea,
-    select {
-      min-width: 0;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      border-radius: 12px;
-      padding: 9px 11px;
-      outline: none;
-    }
-
-    textarea {
-      resize: vertical;
-    }
-
-    .app-shell {
-      width: 100%;
-      min-height: 100vh;
-      min-height: 100dvh;
-      display: flex;
-      justify-content: center;
-      background: var(--bg2);
-    }
-
-    .phone {
-      position: relative;
-      width: 100%;
-      max-width: 480px;
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-      background: var(--bg);
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .topbar {
-      flex: none;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      padding: 13px 18px;
-      border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--bg) 88%, transparent);
-      backdrop-filter: blur(14px);
-    }
-
-    .title {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0;
-    }
-
-    .date-label {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11.5px;
-      color: var(--muted);
-    }
-
-    .account-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      max-width: 190px;
-      padding: 4px 10px 4px 4px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      box-shadow: var(--shadow);
-      font-size: 12.5px;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .avatar {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #7c8cf0, #a06cd0);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 800;
-      flex: none;
-      overflow: hidden;
-    }
-
-    .avatar img {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .subbar {
-      flex: none;
-      z-index: 15;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      padding: 9px 16px 10px;
-    }
-
-    .segmented {
-      display: flex;
-      gap: 4px;
-      padding: 4px;
-      background: var(--bg2);
-      border-radius: 12px;
-    }
-
-    .segmented button {
-      flex: 1;
-      border: 0;
-      border-radius: 9px;
-      padding: 9px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13.5px;
-      font-weight: 800;
-    }
-
-    .segmented button.active {
-      background: var(--surface);
-      color: var(--accent);
-      box-shadow: var(--shadow);
-    }
-
-    .quick-copy {
-      width: 100%;
-      margin-top: 10px;
-      border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
-      background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-      color: var(--accent);
-      border-radius: 12px;
-      padding: 8px 12px;
-      font-size: 12.5px;
-      font-weight: 800;
-    }
-
-    .taco-meter {
-      display: grid;
-      gap: 7px;
-    }
-
-    .meter-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .meter-track {
-      height: 7px;
-      overflow: hidden;
-      border-radius: 99px;
-      background: color-mix(in srgb, var(--text) 9%, transparent);
-    }
-
-    .meter-fill {
-      height: 100%;
-      width: var(--meter, 0%);
-      border-radius: 99px;
-      background: var(--accent);
-      transition: width .2s ease;
-    }
-
-    .meter-over .meter-fill {
-      background: var(--danger);
-    }
-
-    .content {
-      flex: 1;
-      overflow: auto;
-      padding: 16px 16px calc(92px + env(safe-area-inset-bottom));
-    }
-
-    .screen {
-      display: none;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .screen.active {
-      display: flex;
-    }
-
-    .section-title {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 0 4px;
-      font-size: 13px;
-      font-weight: 800;
-      color: color-mix(in srgb, var(--muted) 74%, var(--surface));
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .card-body {
-      padding: 14px;
-    }
-
-    .category-card {
-      display: block;
-      padding: 0;
-    }
-
-    .handle-stack {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 0;
-      width: 36px;
-      min-height: 39px;
-      padding-top: 5px;
-    }
-
-    .icon-button,
-    .handle-button {
-      border: 0;
-      background: transparent;
-      border-radius: 8px;
-      width: 36px;
-      height: 39px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--faint);
-      font-weight: 800;
-    }
-
-    .handle-button {
-      width: 18px;
-      height: 14px;
-      font-size: 0;
-    }
-
-    .handle-button::before {
-      content: "⋮";
-      color: color-mix(in srgb, var(--faint) 76%, var(--accent));
-      font-size: 14px;
-      line-height: 1;
-    }
-
-    .icon-button:hover,
-    .handle-button:hover {
-      background: var(--surface2);
-      color: var(--accent);
-    }
-
-    .category-main {
-      min-width: 0;
-      display: grid;
-      gap: 0;
-    }
-
-    .category-head {
-      display: grid;
-      grid-template-columns: 36px minmax(0, 1fr) 44px 38px;
-      align-items: center;
-      gap: 0;
-      height: 40px;
-      min-height: 40px;
-      overflow: hidden;
-      background: color-mix(in srgb, var(--accent) 4%, var(--surface));
-    }
-
-    .category-input {
-      height: 39px;
-      font-weight: 800;
-      border-color: transparent;
-      background: transparent;
-      color: color-mix(in srgb, var(--accent) 28%, var(--text));
-      padding: 0 4px;
-    }
-
-    .category-input:focus {
-      border-color: var(--border);
-      background: var(--surface2);
-      padding-inline: 10px;
-    }
-
-    .task-list {
-      display: grid;
-      gap: 0;
-    }
-
-    .task-row {
-      display: grid;
-      grid-template-columns: 36px 86px minmax(0, 1fr) 36px;
-      gap: 7px;
-      align-items: center;
-      min-height: 51px;
-      padding: 0 0;
-    }
-
-    .task-row > input {
-      height: 38px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: var(--surface2);
-    }
-
-    .hours-control {
-      display: grid;
-      grid-template-columns: 21px 42px 21px;
-      gap: 0;
-      align-items: center;
-      height: 32px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface2);
-    }
-
-    .hours-control input {
-      height: 30px;
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      text-align: center;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11.5px;
-      background: transparent;
-      color: var(--muted);
-    }
-
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      margin: 0;
-      appearance: none;
-    }
-
-    .mini-button {
-      border: 0;
-      background: transparent;
-      border-radius: 0;
-      height: 30px;
-      width: 21px;
-      color: var(--muted);
-      font-weight: 800;
-      padding: 0;
-    }
-
-    .preset-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      padding: 9px 11px 11px;
-    }
-
-    .add-label {
-      color: var(--faint);
-      font-size: 11px;
-      font-weight: 800;
-      flex: none;
-    }
-
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
-    }
-
-    .chip {
-      border: 1px solid color-mix(in srgb, var(--accent) 13%, var(--border));
-      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
-      color: color-mix(in srgb, var(--accent) 28%, var(--muted));
-      border-radius: 999px;
-      padding: 6px 11px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .primary,
-    .secondary,
-    .danger-button {
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 12px;
-      font-weight: 800;
-    }
-
-    .primary {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .secondary {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-    }
-
-    .add-group-button {
-      background: transparent;
-      border-style: dashed;
-      color: color-mix(in srgb, var(--accent) 45%, var(--muted));
-    }
-
-    .category-card .secondary[data-action="add-task"] {
-      justify-self: start;
-      border-radius: 999px;
-      padding: 7px 12px;
-      font-size: 12px;
-      color: var(--faint);
-      margin: 0 0 2px 11px;
-    }
-
-    .greeting-button {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 11px;
-      padding: 13px 15px;
-      color: var(--faint);
-      background: transparent;
-      border: 0;
-      border-radius: 0;
-    }
-
-    .greeting-button::before {
-      content: "○";
-      color: color-mix(in srgb, var(--accent) 28%, var(--faint));
-      font-size: 16px;
-      width: 30px;
-      height: 30px;
-      border-radius: 9px;
-      background: color-mix(in srgb, var(--accent) 13%, transparent);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex: none;
-    }
-
-    .greeting-text {
-      flex: 1;
-      min-width: 0;
-      text-align: left;
-      display: grid;
-      gap: 1px;
-    }
-
-    .greeting-text strong {
-      color: color-mix(in srgb, var(--muted) 52%, var(--surface));
-      font-size: 14px;
-    }
-
-    .greeting-text span {
-      overflow: hidden;
-      color: color-mix(in srgb, var(--muted) 35%, var(--surface));
-      font-size: 11.5px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .greeting-card .card-body {
-      padding: 0;
-    }
-
-    .danger-button {
-      background: var(--danger-bg);
-      color: var(--danger);
-    }
-
-    .button-row {
-      display: flex;
-      gap: 9px;
-    }
-
-    .button-row button {
-      flex: 1;
-    }
-
-    pre.output {
-      margin: 0;
-      padding: 11px 13px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: inherit;
-      font-size: 12.5px;
-      line-height: 1.75;
-    }
-
-    .output-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border2);
-      background: var(--surface2);
-      font-size: 12.5px;
-      font-weight: 800;
-    }
-
-    .inline-form {
-      display: grid;
-      gap: 9px;
-    }
-
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .contact-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      min-height: 34px;
-    }
-
-    .contact-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 8px;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .contact-tag button {
-      border: 0;
-      background: transparent;
-      color: inherit;
-      padding: 0;
-      font-weight: 800;
-    }
-
-    .settings-row {
-      display: grid;
-      gap: 9px;
-    }
-
-    .accent-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 8px;
-    }
-
-    .swatch {
-      height: 34px;
-      border: 2px solid transparent;
-      border-radius: 8px;
-    }
-
-    .swatch.active {
-      border-color: var(--text);
-    }
-
-    .bottom-nav {
-      position: fixed;
-      left: 50%;
-      bottom: 0;
-      z-index: 30;
-      width: 100%;
-      max-width: 480px;
-      transform: translateX(-50%);
-      display: flex;
-      border-top: 1px solid var(--border);
-      background: color-mix(in srgb, var(--surface) 94%, transparent);
-      backdrop-filter: blur(14px);
-      padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
-      box-shadow: 0 -10px 30px -24px rgba(20, 20, 30, .45);
-    }
-
-    .bottom-nav button {
-      flex: 1;
-      border: 0;
-      background: transparent;
-      padding: 7px 0 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      color: var(--faint);
-      font-size: 10.5px;
-      font-weight: 800;
-    }
-
-    .nav-icon {
-      font-size: 19px;
-      line-height: 1;
-      font-weight: 700;
-    }
-
-    .bottom-nav button.active {
-      color: var(--accent);
-    }
-
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: calc(82px + env(safe-area-inset-bottom));
-      z-index: 50;
-      transform: translateX(-50%);
-      max-width: min(420px, calc(100% - 32px));
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--text) 92%, transparent);
-      color: var(--surface);
-      font-size: 13px;
-      font-weight: 800;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .2s ease, transform .2s ease;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translate(-50%, -6px);
-    }
-
-    .small {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    @media (max-width: 380px) {
-      .task-row {
-        grid-template-columns: 18px 88px minmax(0, 1fr) 26px;
-        gap: 5px;
-      }
-
-      .hours-control {
-        grid-template-columns: 23px 40px 23px;
-      }
-
-      .account-pill {
-        max-width: 128px;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日報ジェネレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+/* =========================================================================
+   日報ジェネレーター — 実装参照用 単一HTML（バニラJS / 描画エンジン不要）
+   - テーマは :root のCSS変数で切替（LIGHT / DARK + アクセント6色）
+   - 状態は state オブジェクト1つ。App.* のハンドラが state を更新し render() で再描画
+   - 認証 / クラウド同期 / Slack送信 は本ファイルではモック（既存資産前提）
+   ========================================================================= */
+
+:root{
+  --bg:#f3f2ee; --bg2:#e9e7e1; --surface:#fff; --surface2:#faf9f6;
+  --text:#21222a; --muted:#71727f; --faint:#9a9ba6;
+  --border:#e7e5df; --border2:#efede9;
+  --danger:#d0463b; --danger-bg:#fbeae8; --ok:#1f9d64;
+  --accent:#3a6fd0;
+  --shadow:0 1px 2px rgba(20,20,30,.05),0 10px 30px -18px rgba(20,20,30,.22);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;}
+body{
+  background:var(--bg2); color:var(--text);
+  font-family:'Zen Kaku Gothic New',sans-serif; -webkit-font-smoothing:antialiased;
+  line-height:1.5; display:flex; justify-content:center; min-height:100vh; min-height:100dvh;
+}
+textarea,input,button,select{font-family:inherit;font-size:inherit;color:inherit;}
+button{cursor:pointer;}
+.mono{font-family:'Space Mono',monospace;}
+::placeholder{color:var(--faint);}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
+
+@keyframes sheetUp{from{transform:translateY(101%);}to{transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px);}to{opacity:1;transform:translate(-50%,0);}}
+@keyframes popIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---- 画面シェル ---- */
+.app{
+  width:100%; max-width:480px; height:100vh; height:100dvh; background:var(--bg);
+  border-left:1px solid var(--border); border-right:1px solid var(--border);
+  display:block; overflow:hidden; position:relative;
+}
+.header{
+  position:fixed; top:0; left:50%; transform:translateX(-50%); z-index:30;
+  width:100%; max-width:480px; min-height:68px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border); padding:13px 18px;
+  display:flex; align-items:center; gap:11px;
+}
+.header__title{font-size:16px; font-weight:700; letter-spacing:.01em;}
+.header__date{font-size:11.5px; color:var(--muted);}
+.account{
+  display:flex; align-items:center; gap:8px; padding:4px 10px 4px 4px;
+  background:var(--surface); border:1px solid var(--border); border-radius:999px; box-shadow:var(--shadow);
+}
+.avatar{
+  width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(135deg,#7c8cf0,#a06cd0);
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;
+}
+.avatar--lg{width:40px;height:40px;}
+.account__badge{
+  position:absolute; right:-3px; bottom:-3px; width:15px; height:15px; border-radius:50%;
+  background:#fff; border:1.5px solid var(--surface);
+  display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.2);
+}
+
+.subheader{
+  position:fixed; top:68px; left:50%; transform:translateX(-50%); z-index:25;
+  width:100%; max-width:480px; background:var(--bg); border-bottom:1px solid var(--border); padding:9px 16px 11px;
+}
+.scroll{
+  position:absolute; left:0; right:0; top:68px; bottom:0;
+  overflow-y:auto; overflow-x:hidden; padding:16px 16px calc(88px + env(safe-area-inset-bottom));
+}
+.app[data-tab="report"] .scroll{top:181px;}
+.app[data-tab="tacos"] .scroll{top:130px;}
+.app[data-tab="settings"] .scroll{top:68px;}
+.tab{display:flex; flex-direction:column; gap:14px; animation:fadeIn .25s ease;}
+
+/* ---- 共通パーツ ---- */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);}
+.seg{display:flex; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:4px; gap:4px;}
+.seg__btn{flex:1; padding:9px; border:none; border-radius:9px; font-size:13.5px; font-weight:700; background:transparent; color:var(--muted); transition:all .15s;}
+.seg__btn.is-active{background:var(--surface); color:var(--accent); box-shadow:var(--shadow);}
+.btn-primary{
+  border:none; background:var(--accent); color:#fff; font-weight:700;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.btn-ghost{border:1px solid var(--border); background:var(--surface); color:var(--text); font-weight:700;}
+.btn-dashed{
+  width:100%; padding:12px; border-radius:13px; border:1px dashed var(--border);
+  background:transparent; color:var(--muted); font-weight:700; font-size:13px;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.section-label{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.05em; padding:0 4px 9px;}
+.icon{display:inline-flex;}
+
+/* ---- 日報: 案件カード ---- */
+.cat{overflow:hidden;}
+.cat__head{
+  display:flex; align-items:center; border-bottom:1px solid var(--border2);
+  background:color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+.handle{flex:none; width:36px; align-self:stretch; cursor:grab; display:flex; align-items:center; justify-content:center; color:var(--faint); touch-action:none;}
+.cat__name-btn{flex:1; min-width:0; display:flex; align-items:center; gap:7px; background:transparent; border:none; padding:9px 4px; text-align:left;}
+.cat__name-text{font-size:14.5px; font-weight:700; color:var(--accent); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cat__name-edit{flex:1; min-width:0; display:flex; align-items:center; background:var(--surface); border:1px solid var(--accent); border-radius:9px; padding:0 4px 0 10px; margin:7px 0; box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);}
+.cat__name-input{flex:1; min-width:0; border:none; background:transparent; padding:8px 0; font-size:14.5px; font-weight:700; color:var(--accent); outline:none;}
+.cat__hours{flex:none; font-size:11px; color:var(--faint); margin:0 8px;}
+.icon-btn{flex:none; border:none; background:transparent; color:var(--faint); display:flex; align-items:center; justify-content:center;}
+.cat__del{width:38px; align-self:stretch;}
+
+.task{display:flex; align-items:center; border-bottom:1px solid var(--border2);}
+.stepper{flex:none; display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+.stepper__btn{width:21px; height:30px; border:none; background:transparent; color:var(--muted); font-size:15px; font-weight:700;}
+.stepper__val{display:flex; align-items:baseline; width:42px; justify-content:center;}
+.stepper__input{width:30px; border:none; background:transparent; text-align:center; padding:0; font-weight:700; font-size:13px; outline:none;}
+.task__name{flex:1; min-width:0; border:1px solid var(--border); background:var(--surface2); border-radius:8px; padding:8px 10px; margin:6px 8px 6px 0; font-size:14px; font-weight:500; outline:none;}
+.task__name:focus{border-color:var(--accent);}
+.task__del{width:36px; align-self:stretch;}
+
+.chip{
+  display:inline-flex; align-items:center; gap:4px; padding:6px 11px; border-radius:999px;
+  border:1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+  background:color-mix(in srgb, var(--accent) 6%, transparent); color:var(--accent); font-size:12px; font-weight:700;
+}
+.chip--plain{border:1px solid var(--border); background:var(--surface2); color:var(--muted); border-style:solid; font-weight:600;}
+
+/* ---- 出力プレビュー ---- */
+.out{border:1px solid var(--border2); border-radius:12px; overflow:hidden;}
+.out__head{display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--surface2); border-bottom:1px solid var(--border2);}
+.out__num{width:18px; height:18px; border-radius:6px; background:var(--accent); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+.out__copy{font-size:11.5px; font-weight:700; color:var(--accent); border:none; background:transparent; display:flex; align-items:center; gap:5px;}
+.out__body{margin:0; white-space:pre-wrap; word-break:break-word; font-family:'Zen Kaku Gothic New',sans-serif; font-size:12.5px; line-height:1.75; color:var(--text); padding:11px 13px;}
+.collapse-head{width:100%; border:none; background:transparent; padding:0; display:flex; align-items:center; justify-content:space-between; text-align:left;}
+.chev{display:flex; transition:transform .2s; color:var(--faint);}
+
+/* ---- タコス ---- */
+.meter{flex:none; padding:10px 16px; border-bottom:1px solid var(--border);}
+.meter__bar{height:7px; border-radius:99px; background:color-mix(in srgb, var(--text) 9%, transparent); overflow:hidden;}
+.meter__fill{height:100%; border-radius:99px; transition:width .25s; background:var(--accent);}
+.block{position:relative; background:var(--surface); border:1px solid var(--border); border-radius:15px; box-shadow:var(--shadow); padding:13px;}
+.rcpt{display:inline-flex; align-items:center; gap:5px; padding:5px 8px 5px 11px; border-radius:999px; background:color-mix(in srgb, var(--accent) 12%, transparent); color:var(--accent); font-size:13px; font-weight:700;}
+.count{display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:9px; overflow:hidden;}
+.count__btn{width:28px; height:30px; border:none; background:transparent; color:var(--muted); font-size:16px; font-weight:700;}
+.count__val{width:36px; text-align:center; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; gap:1px;}
+.select-wrap{position:relative; margin-bottom:9px;}
+.select{width:100%; appearance:none; -webkit-appearance:none; border:1px solid var(--border); background:var(--surface2); border-radius:11px; padding:10px 34px 10px 12px; font-size:13px; font-weight:600; color:var(--muted); outline:none; cursor:pointer;}
+.select-wrap__chev{position:absolute; right:12px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--faint); display:flex;}
+.tpl-chip{padding:5px 11px; border-radius:999px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11.5px; font-weight:700;}
+.tpl-chip.is-active{background:var(--accent); color:#fff; border-color:var(--accent);}
+.body-input{width:100%; resize:none; border:1px solid var(--border); background:var(--surface2); border-radius:11px; padding:10px 12px; font-size:13px; line-height:1.55; outline:none;}
+.post{border:1px solid var(--border2); border-radius:12px; overflow:hidden;}
+.post__head{display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--surface2); border-bottom:1px solid var(--border2);}
+.post__badge{font-size:11px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:3px 8px; border-radius:999px;}
+.post__body{padding:11px 13px; font-size:13px; line-height:1.7; word-break:break-word; white-space:pre-wrap;}
+.post__meta{padding:0 13px 10px; font-size:11px; color:var(--faint);}
+
+/* ---- 設定 ---- */
+.field-input{width:100%; border:1px solid var(--border); background:var(--surface2); border-radius:10px; padding:10px 12px; font-size:13px; outline:none;}
+.pill-group{display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:3px;}
+.pill{padding:6px 14px; border-radius:8px; border:none; font-size:12.5px; font-weight:700; background:transparent; color:var(--muted);}
+.pill.is-active{background:var(--accent); color:#fff;}
+.swatch{width:32px; height:32px; border-radius:50%; border:2px solid transparent;}
+.tag{display:inline-flex; align-items:center; gap:6px; padding:7px 9px 7px 12px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); font-size:12.5px; font-weight:600;}
+.contact-row{display:flex; align-items:center; gap:10px; padding:9px 11px; border-bottom:1px solid var(--border2);}
+.contact-row__ini{width:24px; height:24px; flex:none; border-radius:50%; background:color-mix(in srgb, var(--accent) 13%, transparent); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;}
+.tpl-row{display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:11px;}
+.tpl-row__label{flex:none; font-size:11px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:3px 9px; border-radius:999px;}
+
+/* ---- 下部ナビ ---- */
+.nav{
+  position:fixed; left:50%; bottom:0; transform:translateX(-50%); z-index:30;
+  width:100%; max-width:480px; display:flex; border-top:1px solid var(--border);
+  background:color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter:blur(14px);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+}
+.nav__btn{flex:1; border:none; background:transparent; padding:7px 0 6px; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint);}
+.nav__btn.is-active{color:var(--accent);}
+.nav__label{font-size:10.5px; font-weight:700;}
+
+/* ---- ドロワー / トースト ---- */
+.drawer-backdrop{position:absolute; inset:0; z-index:40; background:rgba(10,10,15,.4); display:flex; align-items:flex-end; animation:fadeIn .2s ease;}
+.drawer{width:100%; background:var(--surface); border-radius:22px 22px 0 0; padding:18px 18px calc(20px + env(safe-area-inset-bottom)); animation:sheetUp .28s cubic-bezier(.22,1,.36,1);}
+.drawer__grip{width:38px; height:4px; border-radius:99px; background:var(--border); margin:0 auto 16px;}
+.toast{position:absolute; left:50%; bottom:84px; z-index:60; transform:translateX(-50%); background:var(--text); color:var(--bg); padding:10px 18px; border-radius:999px; font-size:12.5px; font-weight:700; box-shadow:0 10px 30px -8px rgba(0,0,0,.4); animation:toastIn .25s ease; white-space:nowrap;}
+</style>
 </head>
 <body>
-  <div class="app-shell">
-    <main class="phone" id="app">
-      <header class="topbar">
-        <div class="title">
-          <h1>日報ジェネレーター</h1>
-          <div class="date-label" id="dateLabel"></div>
-        </div>
-        <div class="account-pill" id="accountPill">
-          <div class="avatar" id="accountAvatar">G</div>
-          <span id="accountName">未ログイン</span>
-        </div>
-      </header>
+<div class="app" id="app"><!-- render() がここに描画 --></div>
 
-      <section class="subbar" id="subbar"></section>
+<script>
+"use strict";
+/* =========================================================================
+   テーマ定義
+   ========================================================================= */
+const LIGHT = {'--bg':'#f3f2ee','--bg2':'#e9e7e1','--surface':'#ffffff','--surface2':'#faf9f6','--text':'#21222a','--muted':'#71727f','--faint':'#9a9ba6','--border':'#e7e5df','--border2':'#efede9','--danger':'#d0463b','--danger-bg':'#fbeae8','--ok':'#1f9d64','--shadow':'0 1px 2px rgba(20,20,30,.05),0 10px 30px -18px rgba(20,20,30,.22)'};
+const DARK  = {'--bg':'#15161a','--bg2':'#0e0f12','--surface':'#1d1f25','--surface2':'#24262d','--text':'#eceef3','--muted':'#9a9da8','--faint':'#6b6e79','--border':'#2c2f37','--border2':'#262931','--danger':'#f0786c','--danger-bg':'#3a2422','--ok':'#52c08f','--shadow':'0 1px 2px rgba(0,0,0,.3),0 12px 30px -16px rgba(0,0,0,.6)'};
+const TONES = {
+  '青':{l:'#3a6fd0',d:'#6f9bf0'},
+  '藍':{l:'#2098a0',d:'#4cc3cb'},
+  '緑':{l:'#2f9466',d:'#52c08f'},
+  '橙':{l:'#cf7a2e',d:'#f0a04e'},
+  '桃':{l:'#cf4d7a',d:'#ec7fa3'},
+  '紫':{l:'#7a52c8',d:'#a98ce8'},
+};
+const WD = ['日','月','火','水','木','金','土'];
+const STORAGE_KEY = 'daily_report_state_v5';
+const WEBHOOK_KEY = 'webhook_url';
+const THEME_KEY = 'theme';
 
-      <section class="content">
-        <div class="screen active" id="reportScreen"></div>
-        <div class="screen" id="tacosScreen"></div>
-        <div class="screen" id="settingsScreen"></div>
-      </section>
+const firebaseConfig = {
+  apiKey: 'AIzaSyCbDNiAiSzy56-ExT3NWqsYVfCHiY9DudI',
+  authDomain: 'nippo-generator.firebaseapp.com',
+  projectId: 'nippo-generator',
+  storageBucket: 'nippo-generator.firebasestorage.app',
+  messagingSenderId: '69447370081',
+  appId: '1:69447370081:web:44ac06a844072b7fac7120',
+};
 
-      <nav class="bottom-nav" aria-label="画面切り替え">
-        <button type="button" data-tab="report" class="active">
-          <span class="nav-icon" aria-hidden="true">▤</span>
-          <span>日報</span>
-        </button>
-        <button type="button" data-tab="tacos">
-          <span class="nav-icon" aria-hidden="true">▥</span>
-          <span>タコス</span>
-        </button>
-        <button type="button" data-tab="settings">
-          <span class="nav-icon" aria-hidden="true">☷</span>
-          <span>設定</span>
-        </button>
-      </nav>
-    </main>
-  </div>
-  <div class="toast" id="toast"></div>
+let auth = null;
+let db = null;
+let currentUser = null;
+let saveTimer = null;
+let saving = false;
+let saveQueued = false;
+let firebaseRetry = null;
 
-  <script>
-    const STORAGE_KEY = 'daily_report_state_v5';
-    const WEBHOOK_KEY = 'webhook_url';
-    const THEME_KEY = 'theme';
-    const WD = ['日', '月', '火', '水', '木', '金', '土'];
-    const ACCENTS = {
-      blue: '#3a6fd0',
-      green: '#1f9d64',
-      rose: '#cf5d73',
-      amber: '#c47b24',
-      teal: '#168a8f',
-      violet: '#7c68c7',
-    };
+/* =========================================================================
+   アイコン（SVG）
+   ========================================================================= */
+const I = {
+  copy:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>',
+  copySm:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>',
+  close:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>',
+  closeSm:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+  plusSm:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+  chev:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+  check:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+  pencil:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:color-mix(in srgb,var(--accent) 55%,transparent);flex:none;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>',
+  grip:'<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.7"></circle><circle cx="15" cy="6" r="1.7"></circle><circle cx="9" cy="12" r="1.7"></circle><circle cx="15" cy="12" r="1.7"></circle><circle cx="9" cy="18" r="1.7"></circle><circle cx="15" cy="18" r="1.7"></circle></svg>',
+  greeting:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.5 8.5 8.5 0 0 1-4-1L3 20l1.5-4.5a8.5 8.5 0 0 1 8.5-12 8.38 8.38 0 0 1 8 8z"></path></svg>',
+  warn:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12" y2="17"></line></svg>',
+  google:'<svg width="9" height="9" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38z"/></svg>',
+  navReport:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><polyline points="14 3 14 8 19 8"></polyline><line x1="8.5" y1="13" x2="15.5" y2="13"></line><line x1="8.5" y1="16.5" x2="13" y2="16.5"></line></svg>',
+  navSettings:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"></line><circle cx="9" cy="8" r="2.4" fill="var(--surface)"></circle><line x1="4" y1="16" x2="20" y2="16"></line><circle cx="15" cy="16" r="2.4" fill="var(--surface)"></circle></svg>',
+};
 
-    const firebaseConfig = {
-      apiKey: 'AIzaSyCbDNiAiSzy56-ExT3NWqsYVfCHiY9DudI',
-      authDomain: 'nippo-generator.firebaseapp.com',
-      projectId: 'nippo-generator',
-      storageBucket: 'nippo-generator.firebasestorage.app',
-      messagingSenderId: '69447370081',
-      appId: '1:69447370081:web:44ac06a844072b7fac7120',
-    };
+/* =========================================================================
+   状態
+   ========================================================================= */
+let UID = 100;
+const uid = () => ++UID;
+const dayGroups = (arr) => arr.map(g => ({ id: uid(), category: g.c, tasks: g.t.map(t => ({ id: uid(), hours: t.h, name: t.n })) }));
 
-    let auth = null;
-    let db = null;
-    let currentUser = null;
-    let uidSeed = Date.now();
-    let saveTimer = null;
-    let saving = false;
-    let saveQueued = false;
-    let firebaseRetry = null;
+const state = {
+  tab: 'report',            // report | tacos | settings
+  theme: localStorage.getItem(THEME_KEY) || 'light',           // light | dark
+  tone: '青',
+  day: 'today',             // today(退勤報告) | tomorrow(朝会報告)
+  outputOpen: false,
+  greetingOpen: false,
+  greeting: 'お疲れ様です。退勤いたします。\n本日の作業内容です。',
+  today: dayGroups([
+    { c: 'A案件', t: [{ h: 0.5, n: 'テスト手順書作成' }] },
+    { c: 'B案件', t: [{ h: 1.5, n: 'MTG' }, { h: 1.0, n: '設計書修整' }] },
+    { c: 'その他', t: [{ h: 0.5, n: '朝会・夕会等' }] },
+  ]),
+  tomorrow: dayGroups([
+    { c: 'B案件', t: [{ h: 2.0, n: '実装' }] },
+    { c: 'その他', t: [{ h: 0.5, n: '朝会・夕会等' }] },
+  ]),
+  presets: ['朝会・夕会等', 'MTG', '設計'],
+  newPreset: '',
+  drag: null,               // {type:'cat'|'task', catId, taskId}
+  editingCat: null,
 
-    const $ = (selector, root = document) => root.querySelector(selector);
-    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-    const id = () => 'id' + (++uidSeed).toString(36);
+  // タコス
+  contacts: [],
+  nextContactId: 1,
+  bulkText: '',
+  contactsOpen: false,
+  blocks: [
+    { id: uid(), recipients: [], count: 1, body: '' },
+  ],
+  templates: [
+    { id: 't1', label: '感謝', body: 'いつもありがとうございます！とても助かりました🙏' },
+    { id: 't2', label: 'レビュー', body: 'レビューありがとうございました！すごく勉強になりました' },
+    { id: 't3', label: 'ヘルプ', body: '急ぎの対応ありがとうございました！本当に助かりました' },
+  ],
+  newTemplateLabel: '', newTemplateBody: '',
+  tacoMode: 'merge',        // merge(投稿をまとめる) | split(個別で送る)
+  tacoOutputOpen: true,
+  accumulated: 0,           // 本日の消費（コピー時に加算）
+  usageDate: '',
+  webhook: localStorage.getItem(WEBHOOK_KEY) || '',
+  toast: '',
+  _toastTimer: null,
+};
 
-    const state = defaultState();
-
-    function defaultState() {
-      return {
-        tab: 'report',
-        reportMode: 'taikin',
-        theme: localStorage.getItem(THEME_KEY) || 'light',
-        accentColor: 'blue',
-        reportWork: {
-          greeting: 'お疲れ様です。退勤いたします。\n本日の作業内容です。',
-          taikinGroups: [
-            makeGroup('A案件', [makeTask('テスト手順書作成', 0.5)]),
-            makeGroup('B案件', [makeTask('MTG', 1.5), makeTask('設計書修整', 1.0)]),
-            makeGroup('その他', [makeTask('朝会・夕会等', 0.5)]),
-          ],
-          morningGroups: [
-            makeGroup('A案件', [makeTask('テスト手順書作成', 0.5)]),
-            makeGroup('B案件', [makeTask('MTG', 1.5), makeTask('設計書修整', 1.0)]),
-            makeGroup('その他', [makeTask('朝会・夕会等', 0.5)]),
-          ],
-        },
-        reportPresets: ['朝会・夕会等', 'MTG', '設計'],
-        tacoMode: 'merge',
-        tacoBlocks: [makeTacoBlock()],
-        tacoContacts: [],
-        tacoTemplates: [
-          { id: id(), label: '感謝', body: 'いつもありがとうございます！' },
-          { id: id(), label: 'レビュー', body: 'レビューありがとうございました。' },
-          { id: id(), label: 'ヘルプ', body: 'サポートありがとうございました！' },
-        ],
-        tacoUsage: { date: todayKey(), consumed: 0, dailyLimit: 5 },
-        webhookUrl: localStorage.getItem(WEBHOOK_KEY) || '',
-        ui: {
-          greetingOpen: false,
-          outputOpen: true,
-          tacoOutputOpen: true,
-          contactsOpen: false,
-        },
-      };
-    }
-
-    function makeTask(name = '', hours = 0.5) {
-      return { id: id(), name, hours };
-    }
-
-    function makeGroup(category = '新規案件', tasks = [makeTask()]) {
-      return { id: id(), category, tasks };
-    }
-
-    function makeTacoBlock() {
-      return { id: id(), recipients: [], count: 1, body: '' };
-    }
-
-    function todayKey() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function clone(value) {
-      return JSON.parse(JSON.stringify(value));
-    }
-
-    function loadLocal() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      } catch {
-        return null;
-      }
-    }
-
-    function applyStoredData(data) {
-      if (!data || typeof data !== 'object') return;
-      if (data.reportWork) {
-        state.reportWork.greeting = String(data.reportWork.greeting || state.reportWork.greeting);
-        if (Array.isArray(data.reportWork.taikinGroups)) state.reportWork.taikinGroups = cleanGroups(data.reportWork.taikinGroups);
-        if (Array.isArray(data.reportWork.morningGroups)) state.reportWork.morningGroups = cleanGroups(data.reportWork.morningGroups);
-      }
-      if (Array.isArray(data.reportPresets)) state.reportPresets = data.reportPresets.filter(Boolean);
-      if (Array.isArray(data.tacoContacts)) {
-        state.tacoContacts = data.tacoContacts
-          .map((c) => ({ id: c.id || id(), name: String(c.name || '').trim(), slackUserId: c.slackUserId || null, sendCount: Number(c.sendCount || c.freq || 0) }))
-          .filter((c) => c.name);
-      }
-      if (Array.isArray(data.tacoTemplates)) {
-        state.tacoTemplates = data.tacoTemplates
-          .map((t) => ({ id: t.id || id(), label: String(t.label || '').trim(), body: String(t.body || '').trim() }))
-          .filter((t) => t.label && t.body);
-      }
-      if (Array.isArray(data.tacoBlocks)) state.tacoBlocks = cleanTacoBlocks(data.tacoBlocks);
-      if (data.tacoUsage || data.usage) state.tacoUsage = normalizeUsage(data.tacoUsage || data.usage);
-      if (data.webhookUrl || data.webhook) state.webhookUrl = data.webhookUrl || data.webhook;
-      if (data.theme) state.theme = data.theme;
-      if (data.accentColor) state.accentColor = data.accentColor;
-      if (data.tacoMode === 'merge' || data.tacoMode === 'split') state.tacoMode = data.tacoMode;
-    }
-
-    function cleanGroups(groups) {
-      const cleaned = groups.map((g) => ({
-        id: g.id || id(),
-        category: String(g.category || '新規案件'),
-        tasks: Array.isArray(g.tasks) ? g.tasks.map((t) => ({
-          id: t.id || id(),
-          name: String(t.name || ''),
-          hours: normalizeHours(t.hours),
-        })) : [makeTask()],
-      }));
-      return cleaned.length ? cleaned : [makeGroup()];
-    }
-
-    function cleanTacoBlocks(blocks) {
-      const cleaned = blocks.map((b) => ({
-        id: b.id || id(),
-        recipients: Array.isArray(b.recipients) ? b.recipients.map(String).filter(Boolean) : [],
-        count: Math.max(1, Math.min(9, Number(b.count || 1))),
-        body: String(b.body || ''),
-      }));
-      return cleaned.length ? cleaned : [makeTacoBlock()];
-    }
-
-    function normalizeHours(value) {
-      return Math.max(0, Math.round((parseFloat(value) || 0) * 2) / 2);
-    }
-
-    function normalizeUsage(usage) {
-      const date = todayKey();
-      const current = usage && typeof usage === 'object' ? usage : {};
-      return {
-        date,
-        consumed: current.date === date ? Math.max(0, Number(current.consumed || 0)) : 0,
-        dailyLimit: Math.max(1, Number(current.dailyLimit || 5)),
-      };
-    }
-
-    function serializableState() {
-      return {
-        reportWork: state.reportWork,
-        reportPresets: state.reportPresets,
-        tacoContacts: state.tacoContacts,
-        tacoTemplates: state.tacoTemplates,
-        tacoBlocks: state.tacoBlocks,
-        tacoUsage: normalizeUsage(state.tacoUsage),
-        tacoMode: state.tacoMode,
-        webhookUrl: state.webhookUrl,
-        theme: state.theme,
-        accentColor: state.accentColor,
-      };
-    }
-
-    function persistLocal() {
-      const data = serializableState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      localStorage.setItem(WEBHOOK_KEY, data.webhookUrl || '');
-      localStorage.setItem(THEME_KEY, data.theme || 'light');
-    }
-
-    function persist(immediate = false) {
+/* =========================================================================
+   小物ヘルパー
+   ========================================================================= */
+const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtHours = (h) => Number.isInteger(h) ? h.toFixed(1) : String(h);
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function normalizeHours(value){
+  return Math.max(0, Math.round((parseFloat(value) || 0) * 2) / 2);
+}
+function makeBlankBlock(){
+  return { id: uid(), recipients: [], count: 1, body: '' };
+}
+function normalizeGroups(groups){
+  if (!Array.isArray(groups)) return [];
+  return groups.map(g => ({
+    id: Number(g.id) || uid(),
+    category: String(g.category || '新規案件'),
+    tasks: Array.isArray(g.tasks) && g.tasks.length ? g.tasks.map(t => ({
+      id: Number(t.id) || uid(),
+      hours: normalizeHours(t.hours),
+      name: String(t.name || ''),
+    })) : [{ id: uid(), hours: 0.5, name: '' }],
+  })).filter(g => g.category || g.tasks.length);
+}
+function normalizeUsage(usage){
+  const date = todayKey();
+  const src = usage && typeof usage === 'object' ? usage : {};
+  return {
+    date,
+    consumed: src.date === date ? Math.max(0, Number(src.consumed || 0)) : 0,
+    dailyLimit: Math.max(1, Number(src.dailyLimit || 5)),
+  };
+}
+function syncDailyUsage(){
+  const usage = normalizeUsage({ date: state.usageDate, consumed: state.accumulated, dailyLimit: 5 });
+  state.usageDate = usage.date;
+  state.accumulated = usage.consumed;
+}
+function serializableState(){
+  syncDailyUsage();
+  return {
+    reportWork: {
+      greeting: state.greeting,
+      today: state.today,
+      tomorrow: state.tomorrow,
+    },
+    reportPresets: state.presets,
+    tacoContacts: state.contacts,
+    tacoTemplates: state.templates,
+    tacoBlocks: state.blocks,
+    tacoUsage: { date: state.usageDate, consumed: state.accumulated, dailyLimit: 5 },
+    tacoMode: state.tacoMode,
+    webhookUrl: state.webhook,
+    theme: state.theme,
+    accentColor: state.tone,
+  };
+}
+function persistLocal(){
+  const data = serializableState();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(WEBHOOK_KEY, data.webhookUrl || '');
+  localStorage.setItem(THEME_KEY, data.theme || 'light');
+}
+function loadLocal(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+  catch { return null; }
+}
+function applyStoredData(data){
+  if (!data || typeof data !== 'object') return;
+  const work = data.reportWork || {};
+  if (typeof work.greeting === 'string') state.greeting = work.greeting;
+  if (Array.isArray(work.today)) state.today = normalizeGroups(work.today);
+  if (Array.isArray(work.tomorrow)) state.tomorrow = normalizeGroups(work.tomorrow);
+  if (Array.isArray(data.reportPresets)) state.presets = data.reportPresets.map(String).filter(Boolean);
+  if (Array.isArray(data.tacoContacts)) {
+    state.contacts = data.tacoContacts.map(c => ({
+      id: Number(c.id) || uid(),
+      name: String(c.name || '').trim(),
+      freq: Math.max(0, Number(c.freq || c.sendCount || 0)),
+    })).filter(c => c.name);
+    state.nextContactId = Math.max(1, ...state.contacts.map(c => c.id + 1));
+  }
+  if (Array.isArray(data.tacoTemplates)) {
+    state.templates = data.tacoTemplates.map(t => ({
+      id: String(t.id || ('tpl' + uid())),
+      label: String(t.label || '').trim(),
+      body: String(t.body || '').trim(),
+    })).filter(t => t.label && t.body);
+  }
+  if (Array.isArray(data.tacoBlocks)) {
+    const blocks = data.tacoBlocks.map(b => ({
+      id: Number(b.id) || uid(),
+      recipients: Array.isArray(b.recipients) ? b.recipients.map(String).filter(Boolean) : [],
+      count: Math.max(1, Math.min(9, Number(b.count || 1))),
+      body: String(b.body || ''),
+    }));
+    state.blocks = blocks.length ? blocks : [makeBlankBlock()];
+  }
+  if (data.tacoUsage) {
+    const usage = normalizeUsage(data.tacoUsage);
+    state.usageDate = usage.date;
+    state.accumulated = usage.consumed;
+  }
+  if (data.tacoMode === 'merge' || data.tacoMode === 'split') state.tacoMode = data.tacoMode;
+  if (typeof data.webhookUrl === 'string') state.webhook = data.webhookUrl;
+  if (data.theme === 'light' || data.theme === 'dark') state.theme = data.theme;
+  if (TONES[data.accentColor]) state.tone = data.accentColor;
+}
+function persist(immediate = false){
+  persistLocal();
+  if (immediate) saveToFirestore();
+  else debouncedFirestoreSave();
+}
+function firebaseReady(){
+  return !!(window.firebase && firebase.initializeApp && firebase.auth && firebase.firestore);
+}
+function initFirebase(){
+  if (auth) return;
+  if (!firebaseReady()) {
+    clearTimeout(firebaseRetry);
+    firebaseRetry = setTimeout(initFirebase, 300);
+    return;
+  }
+  if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
+    if (user) await loadFromFirestore();
+    render();
+  });
+}
+function userDocRef(){
+  if (!currentUser || !db) return null;
+  return db.collection('users').doc(currentUser.uid);
+}
+async function googleLogin(){
+  initFirebase();
+  if (!auth) {
+    showToast('ログイン機能を読み込めませんでした');
+    return;
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (error) {
+    showToast('ログインできませんでした');
+    console.error(error);
+  }
+}
+async function googleLogout(){
+  if (!auth) return;
+  await auth.signOut();
+  currentUser = null;
+  render();
+}
+async function loadFromFirestore(){
+  const ref = userDocRef();
+  if (!ref) return;
+  try {
+    const snap = await ref.get();
+    if (snap.exists) {
+      applyStoredData(snap.data());
       persistLocal();
-      if (immediate) saveToFirestore();
-      else debouncedFirestoreSave();
+    } else {
+      await saveToFirestore();
     }
+  } catch (error) {
+    showToast('同期データを読み込めませんでした');
+    console.error(error);
+  }
+}
+async function saveToFirestore(){
+  const ref = userDocRef();
+  if (!ref) return;
+  if (saving) {
+    saveQueued = true;
+    return;
+  }
+  saving = true;
+  try {
+    await ref.set({
+      ...serializableState(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    showToast('同期に失敗しました。入力内容はこの端末に保存されています');
+    console.error(error);
+  }
+  saving = false;
+  if (saveQueued) {
+    saveQueued = false;
+    await saveToFirestore();
+  }
+}
+function debouncedFirestoreSave(){
+  if (!currentUser) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToFirestore, 1500);
+}
+async function postToSlack(text){
+  if (!state.webhook) throw new Error('Webhook is empty');
+  await fetch(state.webhook, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'payload=' + encodeURIComponent(JSON.stringify({ text })),
+  });
+}
+function showToast(message){
+  toast(message);
+}
 
-    function firebaseReady() {
-      return !!(window.firebase && firebase.initializeApp && firebase.auth && firebase.firestore);
-    }
+function applyTheme(){
+  const dark = state.theme === 'dark';
+  const map = Object.assign({}, dark ? DARK : LIGHT, { '--accent': (TONES[state.tone] || TONES['青'])[dark ? 'd' : 'l'] });
+  for (const k in map) document.documentElement.style.setProperty(k, map[k]);
+}
+function toast(msg){
+  state.toast = msg;
+  clearTimeout(state._toastTimer);
+  render();
+  state._toastTimer = setTimeout(() => { state.toast = ''; render(); }, 1900);
+}
+async function copyText(text, msg){
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else throw new Error('clipboard fallback');
+  } catch(e) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+  toast(msg);
+}
 
-    function initFirebase() {
-      if (auth) return;
-      if (!firebaseReady()) {
-        clearTimeout(firebaseRetry);
-        firebaseRetry = setTimeout(initFirebase, 300);
-        return;
-      }
-      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-      auth.onAuthStateChanged(async (user) => {
-        currentUser = user;
-        renderAccount();
-        if (user) await loadFromFirestore();
-        render();
-      });
-    }
+/* 1日分を整形: ＜案件＞ + "Xh｜タスク名" の行 */
+function formatDay(groups){
+  return groups
+    .filter(g => g.tasks.some(t => t.name.trim()))
+    .map(g => {
+      const lines = g.tasks.filter(t => t.name.trim()).map(t => fmtHours(t.hours) + 'h｜' + t.name.trim());
+      return '＜' + (g.category.trim() || '案件') + '＞\n' + lines.join('\n');
+    })
+    .join('\n');
+}
 
-    function userDocRef() {
-      if (!currentUser || !db) return null;
-      return db.collection('users').doc(currentUser.uid);
-    }
+/* 退勤報告(本日) / 朝会報告(明日) の3まとまりを算出 */
+function outputBlocks(){
+  const todayBody = formatDay(state.today);
+  const tmrBody   = formatDay(state.tomorrow);
+  const greet = state.greeting.trim();
+  const block1 = (greet ? greet + '\n\n' : '') + (todayBody || '（本日分が未入力です）');
+  const block2 = todayBody || '（本日分が未入力です）';
+  const block3 = tmrBody   || '（明日分が未入力です）';
+  return { block1, block2, block3 };
+}
 
-    async function googleLogin() {
-      initFirebase();
-      if (!auth) {
-        showToast('ログイン機能を読み込めませんでした');
-        return;
-      }
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        await auth.signInWithPopup(provider);
-      } catch (error) {
-        showToast('ログインできませんでした');
-        console.error(error);
-      }
-    }
+/* タコス投稿の算出（mode: merge=個数別にまとめる / split=1人ずつ） */
+function tacoPosts(){
+  const valid = state.blocks.filter(b => b.recipients.length && b.body.trim() && b.count > 0);
+  if (state.tacoMode === 'split') {
+    const posts = []; let n = 0;
+    valid.forEach(b => b.recipients.forEach(r => {
+      n++;
+      posts.push({ num: n, count: b.count, people: 1, consume: b.count, text: '＠' + r + '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count) });
+    }));
+    return posts;
+  }
+  const byCount = {};
+  valid.forEach(b => { (byCount[b.count] = byCount[b.count] || []).push(b); });
+  return Object.keys(byCount).map(Number).sort((a,b) => b - a).map((c, i) => {
+    const bs = byCount[c];
+    const text = bs.map(b => b.recipients.map(r => '＠' + r).join(' ') + '\n' + b.body.trim()).join('\n\n') + '\n' + '🌮'.repeat(c);
+    const people = bs.reduce((a,b) => a + b.recipients.length, 0);
+    return { num: i + 1, count: c, people, consume: people * c, text };
+  });
+}
 
-    async function googleLogout() {
-      if (!auth) return;
-      await auth.signOut();
-      currentUser = null;
+/* =========================================================================
+   アクション（App.* ）— テンプレートの onclick / oninput から呼ぶ
+   ========================================================================= */
+const groupsOf = () => state.day === 'today' ? state.today : state.tomorrow;
+const findCat = (catId) => groupsOf().find(g => g.id === catId);
+
+const App = {
+  /* ナビ / テーマ */
+  go(tab){ state.tab = tab; render(); },
+  setTheme(t){ state.theme = t; applyTheme(); render(); },
+  setTone(k){ state.tone = k; applyTheme(); render(); },
+
+  /* 退勤/朝会 切替 */
+  setDay(d){ state.day = d; render(); },
+
+  /* 挨拶文 */
+  toggleGreeting(){ state.greetingOpen = !state.greetingOpen; render(); },
+  setGreeting(v){ state.greeting = v; render(); },
+
+  /* 案件 / タスク */
+  startEditCat(catId){ state.editingCat = catId; render(); setTimeout(() => { const el = document.querySelector('[data-k="cat-'+catId+'"]'); if(el){ el.focus(); el.select && el.select(); } }, 20); },
+  stopEditCat(){ state.editingCat = null; render(); },
+  catKey(e){ if(e.key === 'Enter'){ state.editingCat = null; render(); } },
+  setCategory(catId, v){ const g = findCat(catId); if(g) g.category = v; render(); },
+  deleteCategory(catId){ const arr = groupsOf(); const i = arr.findIndex(g => g.id === catId); if(i>=0) arr.splice(i,1); render(); },
+  addCategory(){ groupsOf().push({ id: uid(), category: '新規案件', tasks: [{ id: uid(), hours: 0.5, name: '' }] }); render(); },
+  addTask(catId, name){ const g = findCat(catId); if(g) g.tasks.push({ id: uid(), hours: 0.5, name: name }); render(); },
+  setTaskName(catId, taskId, v){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.name = v; render(); },
+  setTaskHours(catId, taskId, v){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.hours = Math.max(0, Math.round((parseFloat(v)||0)*2)/2); render(); },
+  bumpHours(catId, taskId, d){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.hours = Math.max(0, Math.round((t.hours + d)*2)/2); render(); },
+  deleteTask(catId, taskId){ const g = findCat(catId); if(g){ const i = g.tasks.findIndex(t => t.id === taskId); if(i>=0) g.tasks.splice(i,1);} render(); },
+
+  /* ドラッグ並び替え（HTML5 DnD） */
+  dragStartCat(catId, e){ try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','c'); }catch(x){} state.drag = { type:'cat', catId }; render(); },
+  dragStartTask(catId, taskId, e){ try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','t'); }catch(x){} state.drag = { type:'task', catId, taskId }; render(); },
+  dragEnd(){ state.drag = null; render(); },
+  dragEnterCat(catId){ const d = state.drag; if(!d || d.type!=='cat' || d.catId===catId) return; const arr = groupsOf(); const from = arr.findIndex(g=>g.id===d.catId), to = arr.findIndex(g=>g.id===catId); if(from<0||to<0) return; const [m] = arr.splice(from,1); arr.splice(to,0,m); render(); },
+  dragEnterTask(catId, taskId){ const d = state.drag; if(!d || d.type!=='task' || d.catId!==catId || d.taskId===taskId) return; const g = findCat(catId); if(!g) return; const from = g.tasks.findIndex(t=>t.id===d.taskId), to = g.tasks.findIndex(t=>t.id===taskId); if(from<0||to<0) return; const [m] = g.tasks.splice(from,1); g.tasks.splice(to,0,m); render(); },
+
+  /* 出力プレビュー / コピー */
+  toggleOutput(){ state.outputOpen = !state.outputOpen; render(); },
+  copyBlock(which){ const o = outputBlocks(); if(which===1) copyText(o.block1,'退勤報告をコピーしました'); else if(which===2) copyText(o.block2,'今日やったことをコピーしました'); else copyText(o.block3,'明日やることをコピーしました'); },
+  copyAll(){ const o = outputBlocks(); copyText(o.block1 + '\n\n' + o.block2 + '\n\n' + o.block3, '3まとまりをコピーしました'); },
+  quickCopy(){ const o = outputBlocks(); state.day==='today' ? copyText(o.block1,'退勤報告をコピーしました') : copyText(o.block3,'明日やることをコピーしました'); },
+  async sendSlack(){
+    if (!state.webhook) {
+      toast('Slack送信先を設定してください');
+      state.tab = 'settings';
       render();
+      return;
     }
-
-    async function loadFromFirestore() {
-      const ref = userDocRef();
-      if (!ref) return;
-      try {
-        const snap = await ref.get();
-        if (snap.exists) {
-          applyStoredData(snap.data());
-          persistLocal();
-        } else {
-          await saveToFirestore();
-        }
-      } catch (error) {
-        showToast('同期データを読み込めませんでした');
-        console.error(error);
-      }
+    const o = outputBlocks();
+    try {
+      await postToSlack(o.block1);
+      await postToSlack(o.block2);
+      await postToSlack(o.block3);
+      toast('Slackへ送信しました');
+    } catch (error) {
+      toast('Slackへ送信できませんでした');
+      console.error(error);
     }
+  },
 
-    async function saveToFirestore() {
-      const ref = userDocRef();
-      if (!ref) return;
-      if (saving) {
-        saveQueued = true;
-        return;
-      }
-      saving = true;
-      try {
-        await ref.set({
-          ...serializableState(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-      } catch (error) {
-        showToast('同期に失敗しました。入力内容はこの端末に保存されています');
-        console.error(error);
-      }
-      saving = false;
-      if (saveQueued) {
-        saveQueued = false;
-        await saveToFirestore();
-      }
-    }
+  /* プリセット */
+  setNewPreset(v){ state.newPreset = v; },
+  addPreset(){ const v = state.newPreset.trim(); if(!v) return; state.presets.push(v); state.newPreset=''; render(); },
+  removePreset(name){ state.presets = state.presets.filter(p => p !== name); render(); },
 
-    function debouncedFirestoreSave() {
-      if (!currentUser) return;
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(saveToFirestore, 1500);
-    }
+  /* タコス: ブロック */
+  addBlock(){ state.blocks.push({ id: uid(), recipients: [], count: 1, body: '' }); render(); },
+  removeBlock(id){ state.blocks = state.blocks.filter(b => b.id !== id); render(); },
+  bumpCount(id, d){ const b = state.blocks.find(b => b.id === id); if(b) b.count = Math.max(1, Math.min(9, b.count + d)); render(); },
+  setBody(id, v){ const b = state.blocks.find(b => b.id === id); if(b) b.body = v; render(); },
+  pickRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b && name && !b.recipients.includes(name)) b.recipients.push(name); render(); },
+  removeRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b) b.recipients = b.recipients.filter(r => r !== name); render(); },
 
-    async function postToSlack(text) {
-      if (!state.webhookUrl) throw new Error('Webhook is empty');
-      await fetch(state.webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'payload=' + encodeURIComponent(JSON.stringify({ text })),
-      });
-    }
+  /* タコス: 出力 */
+  toggleTacoOutput(){ state.tacoOutputOpen = !state.tacoOutputOpen; render(); },
+  setTacoMode(m){ state.tacoMode = m; render(); },
+  copyPost(num){ const p = tacoPosts().find(p => p.num === num); if(!p) return; state.accumulated += p.consume; copyText(p.text, '投稿'+num+'をコピー'); },
+  copyAllTacos(){ const posts = tacoPosts(); const all = posts.map(p => p.text).join('\n\n'); state.accumulated += posts.reduce((a,p)=>a+p.consume,0); copyText(all, '全'+posts.length+'投稿をコピー'); },
 
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
+  /* 設定: Slack / 連絡先 / テンプレート */
+  setWebhook(v){ state.webhook = v; },
+  setAccumulated(v){ state.accumulated = Math.max(0, Number(v || 0)); render(); },
+  toggleContacts(){ state.contactsOpen = !state.contactsOpen; render(); },
+  setBulkText(v){ state.bulkText = v; },
+  bulkImport(){
+    const names = state.bulkText.split('\n').map(n => n.replace(/^[＠@\s]+/,'').trim()).filter(Boolean);
+    if(!names.length){ toast('名前を貼り付けてください'); return; }
+    const existing = new Set(state.contacts.map(c => c.name)); let added = 0;
+    names.forEach(n => { if(!existing.has(n)){ existing.add(n); state.contacts.push({ id: state.nextContactId++, name: n, freq: 0 }); added++; } });
+    state.bulkText = '';
+    render();
+    toast(added ? added + '人を登録しました' : '新しい相手はありませんでした');
+  },
+  removeContact(id){ state.contacts = state.contacts.filter(c => c.id !== id); render(); },
+  setTplLabel(v){ state.newTemplateLabel = v; },
+  setTplBody(v){ state.newTemplateBody = v; },
+  addTemplate(){ const label = state.newTemplateLabel.trim(), body = state.newTemplateBody.trim(); if(!label || !body){ toast('ラベルと文面を入力してください'); return; } state.templates.push({ id: 'tpl'+uid(), label, body }); state.newTemplateLabel=''; state.newTemplateBody=''; render(); toast('テンプレートを追加しました'); },
+  removeTemplate(id){ state.templates = state.templates.filter(t => t.id !== id); render(); },
+};
+window.App = App;
 
-    function setTab(tab) {
-      state.tab = tab;
-      render();
-    }
+const LOCAL_ONLY_ACTIONS = new Set(['go','setDay','toggleGreeting','startEditCat','stopEditCat','toggleContacts','toggleOutput','toggleTacoOutput']);
+const SAVE_ACTIONS = new Set([
+  'setTheme','setTone','setGreeting','setCategory','deleteCategory','addCategory','addTask',
+  'setTaskName','setTaskHours','bumpHours','deleteTask','dragEnterCat','dragEnterTask',
+  'addPreset','removePreset','addBlock','removeBlock','bumpCount','setBody','pickRecipient',
+  'removeRecipient','setTacoMode','setWebhook','bulkImport','removeContact','addTemplate',
+  'removeTemplate','copyPost','copyAllTacos','setAccumulated',
+]);
+const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','setAccumulated','setTheme','setTone','setWebhook']);
+Object.keys(App).forEach((name) => {
+  if (!LOCAL_ONLY_ACTIONS.has(name) && !SAVE_ACTIONS.has(name)) return;
+  const original = App[name];
+  App[name] = function(...args){
+    const result = original.apply(App, args);
+    if (LOCAL_ONLY_ACTIONS.has(name)) persistLocal();
+    if (SAVE_ACTIONS.has(name)) persist(IMMEDIATE_SAVE_ACTIONS.has(name));
+    return result;
+  };
+});
 
-    function setReportMode(mode) {
-      state.reportMode = mode;
-      render();
-    }
+/* =========================================================================
+   ビュー（HTML文字列を組み立て）
+   ========================================================================= */
+function viewHeader(){
+  const d = new Date();
+  const dateLabel = (d.getMonth()+1) + '月' + d.getDate() + '日 (' + WD[d.getDay()] + ')';
+  const accountName = currentUser ? (currentUser.displayName || currentUser.email || 'ログイン中') : '未ログイン';
+  const avatar = currentUser && currentUser.photoURL
+    ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;border-radius:50%;display:block;">`
+    : esc((accountName || '未').slice(0, 1));
+  const account = state.tab === 'report' ? `
+    <div class="account">
+      <div style="position:relative;width:30px;height:30px;flex:none;">
+        <div class="avatar">${avatar}</div>
+        <div class="account__badge">${I.google}</div>
+      </div>
+      <span style="font-size:12.5px;font-weight:700;white-space:nowrap;max-width:132px;overflow:hidden;text-overflow:ellipsis;">${esc(accountName)}</span>
+    </div>` : '';
+  return `
+  <div class="header">
+    <div style="flex:1;min-width:0;">
+      <div class="header__title">日報ジェネレーター</div>
+      <div class="header__date mono">${dateLabel}</div>
+    </div>
+    ${account}
+  </div>`;
+}
 
-    function activeGroups() {
-      return state.reportMode === 'taikin' ? state.reportWork.taikinGroups : state.reportWork.morningGroups;
-    }
-
-    function setActiveGroups(groups) {
-      if (state.reportMode === 'taikin') state.reportWork.taikinGroups = groups;
-      else state.reportWork.morningGroups = groups;
-    }
-
-    function formatHours(hours) {
-      return (Number(hours) || 0).toFixed(1);
-    }
-
-    function formatDay(groups) {
-      return groups
-        .filter((group) => group.tasks.some((task) => task.name.trim() && Number(task.hours) > 0))
-        .map((group) => {
-          const lines = group.tasks
-            .filter((task) => task.name.trim() && Number(task.hours) > 0)
-            .map((task) => `${formatHours(task.hours)}h｜${task.name.trim()}`);
-          return `＜${group.category.trim() || '案件'}＞\n${lines.join('\n')}`;
-        })
-        .join('\n');
-    }
-
-    function reportOutputs() {
-      const todayBody = formatDay(state.reportWork.taikinGroups);
-      const tomorrowBody = formatDay(state.reportWork.morningGroups);
-      const greeting = state.reportWork.greeting.trim();
-      const block1 = `${greeting ? greeting + '\n\n' : ''}${todayBody || '（退勤報告が未入力です）'}`;
-      const block2 = todayBody || '（退勤報告が未入力です）';
-      const block3 = tomorrowBody || '（朝会報告が未入力です）';
-      return [
-        { title: '退勤報告', text: block1 },
-        { title: '今日やったこと', text: block2 },
-        { title: '明日やること', text: block3 },
-      ];
-    }
-
-    async function copyText(text, message, afterCopy) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        const area = document.createElement('textarea');
-        area.value = text;
-        area.style.position = 'fixed';
-        area.style.opacity = '0';
-        document.body.appendChild(area);
-        area.select();
-        document.execCommand('copy');
-        area.remove();
-      }
-      if (afterCopy) afterCopy();
-      showToast(message);
-      persistLocal();
-    }
-
-    function showToast(message) {
-      const toast = $('#toast');
-      toast.textContent = message;
-      toast.classList.add('show');
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1800);
-    }
-
-    function totalHours(groups) {
-      return groups.reduce((sum, group) => sum + group.tasks.reduce((inner, task) => inner + (task.name.trim() ? Number(task.hours) || 0 : 0), 0), 0);
-    }
-
-    function moveItem(list, index, delta) {
-      const to = index + delta;
-      if (to < 0 || to >= list.length) return list;
-      const next = list.slice();
-      const [item] = next.splice(index, 1);
-      next.splice(to, 0, item);
-      return next;
-    }
-
-    function updateReportGroup(groupId, updater) {
-      const groups = activeGroups().map((group) => group.id === groupId ? updater(clone(group)) : group);
-      setActiveGroups(groups);
-      persist();
-      render();
-    }
-
-    function tacoPosts() {
-      const valid = state.tacoBlocks
-        .map((block) => ({ ...block, body: block.body.trim(), count: Math.max(1, Number(block.count) || 1), recipients: block.recipients.filter(Boolean) }))
-        .filter((block) => block.recipients.length && block.body);
-
-      if (state.tacoMode === 'split') {
-        let num = 0;
-        return valid.flatMap((block) => block.recipients.map((recipient) => ({
-          num: ++num,
-          count: block.count,
-          people: 1,
-          recipients: [recipient],
-          consume: block.count,
-          text: `＠${recipient}\n${block.body}\n${'🌮'.repeat(block.count)}`,
-        })));
-      }
-
-      const grouped = new Map();
-      valid.forEach((block) => {
-        if (!grouped.has(block.count)) grouped.set(block.count, []);
-        grouped.get(block.count).push(block);
-      });
-      return Array.from(grouped.keys()).sort((a, b) => b - a).map((count, index) => {
-        const blocks = grouped.get(count);
-        const text = `${blocks.map((block) => `${block.recipients.map((recipient) => `＠${recipient}`).join(' ')}\n${block.body}`).join('\n\n')}\n${'🌮'.repeat(count)}`;
-        const recipients = blocks.flatMap((block) => block.recipients);
-        return {
-          num: index + 1,
-          count,
-          people: recipients.length,
-          recipients,
-          consume: recipients.length * count,
-          text,
-        };
-      });
-    }
-
-    function addTacoUsage(posts) {
-      const usage = normalizeUsage(state.tacoUsage);
-      const total = posts.reduce((sum, post) => sum + post.consume, 0);
-      state.tacoUsage = { ...usage, consumed: usage.consumed + total };
-      state.tacoContacts = state.tacoContacts.map((contact) => {
-        const sendCount = posts.reduce((sum, post) => sum + post.recipients.filter((recipient) => recipient === contact.name).length, 0);
-        return sendCount ? { ...contact, sendCount: (contact.sendCount || 0) + sendCount } : contact;
-      });
-      persist(true);
-      render();
-    }
-
-    function render() {
-      state.tacoUsage = normalizeUsage(state.tacoUsage);
-      applyTheme();
-      renderHeader();
-      renderSubbar();
-      renderReport();
-      renderTacos();
-      renderSettings();
-      $$('.screen').forEach((screen) => screen.classList.remove('active'));
-      $(`#${state.tab}Screen`).classList.add('active');
-      $$('.bottom-nav button').forEach((button) => button.classList.toggle('active', button.dataset.tab === state.tab));
-    }
-
-    function applyTheme() {
-      document.body.classList.toggle('theme-dark', state.theme === 'dark');
-      document.documentElement.style.setProperty('--accent', ACCENTS[state.accentColor] || ACCENTS.blue);
-    }
-
-    function renderHeader() {
-      const d = new Date();
-      $('#dateLabel').textContent = `${d.getMonth() + 1}月${d.getDate()}日 (${WD[d.getDay()]})`;
-      renderAccount();
-    }
-
-    function renderAccount() {
-      const avatar = $('#accountAvatar');
-      const name = currentUser ? (currentUser.displayName || currentUser.email || 'ログイン中') : '未ログイン';
-      $('#accountName').textContent = name;
-      avatar.innerHTML = '';
-      if (currentUser && currentUser.photoURL) {
-        const img = document.createElement('img');
-        img.src = currentUser.photoURL;
-        img.alt = '';
-        avatar.appendChild(img);
-      } else {
-        avatar.textContent = (name || 'G').slice(0, 1);
-      }
-    }
-
-    function renderSubbar() {
-      const subbar = $('#subbar');
-      if (state.tab === 'report') {
-        subbar.innerHTML = `
-          <div class="segmented">
-            <button type="button" class="${state.reportMode === 'taikin' ? 'active' : ''}" data-action="report-mode" data-mode="taikin">退勤報告</button>
-            <button type="button" class="${state.reportMode === 'morning' ? 'active' : ''}" data-action="report-mode" data-mode="morning">朝会報告</button>
-          </div>
-        `;
-      } else if (state.tab === 'tacos') {
-        const usage = normalizeUsage(state.tacoUsage);
-        const pct = Math.min(100, usage.dailyLimit ? usage.consumed / usage.dailyLimit * 100 : 0);
-        subbar.innerHTML = `
-          <div class="taco-meter ${usage.consumed > usage.dailyLimit ? 'meter-over' : ''}" style="--meter:${pct}%">
-            <div class="meter-row">
-              <span>本日の消費${usage.consumed > usage.dailyLimit ? ' / 上限超過' : ''}</span>
-              <span>${usage.consumed} / ${usage.dailyLimit}</span>
-            </div>
-            <div class="meter-track"><div class="meter-fill"></div></div>
-          </div>
-        `;
-      } else {
-        subbar.innerHTML = '<div class="small">設定</div>';
-      }
-    }
-
-    function renderReport() {
-      const screen = $('#reportScreen');
-      const groups = activeGroups();
-      const modeLabel = state.reportMode === 'taikin' ? '退勤報告' : '朝会報告';
-      const outputs = reportOutputs();
-      screen.innerHTML = `
-        <div class="section-title">
-          <span>${modeLabel}の作業内容</span>
-          <span>計 ${formatHours(totalHours(groups))}h</span>
+function viewSubheader(){
+  if (state.tab === 'report') {
+    const isToday = state.day === 'today';
+    const quickLabel = isToday ? '退勤報告をコピー' : '明日やることをコピー';
+    return `
+    <div class="subheader">
+      <div class="seg">
+        <button class="seg__btn ${isToday?'is-active':''}" onclick="App.setDay('today')">退勤報告</button>
+        <button class="seg__btn ${!isToday?'is-active':''}" onclick="App.setDay('tomorrow')">朝会報告</button>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;font-size:13px;" onclick="App.quickCopy()">${I.copy}${quickLabel}</button>
+    </div>`;
+  }
+  if (state.tab === 'tacos') {
+    const consumed = state.accumulated;
+    const over = consumed > 5;
+    const pct = Math.min(100, consumed/5*100);
+    const txt = over ? 'var(--danger)' : 'var(--text)';
+    return `
+    <div class="meter" style="background:${over?'var(--danger-bg)':'var(--surface)'};border-bottom-color:${over?'color-mix(in srgb,var(--danger) 35%,transparent)':'var(--border)'};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <div style="font-size:12px;font-weight:700;color:${txt};display:flex;align-items:center;gap:7px;">
+          本日の消費
+          ${over?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--danger);">${I.warn}上限超過</span>`:''}
         </div>
-        ${state.reportMode === 'taikin' ? renderGreetingCard() : ''}
-        <div id="groupList"></div>
-        <button type="button" class="secondary add-group-button" data-action="add-group">案件カテゴリを追加</button>
-        ${renderReportOutput(outputs)}
-      `;
+        <div class="mono" style="font-weight:700;font-size:13.5px;color:${txt};">${consumed} / 5</div>
+      </div>
+      <div class="meter__bar"><div class="meter__fill" style="width:${pct}%;background:${over?'var(--danger)':'var(--accent)'};"></div></div>
+    </div>`;
+  }
+  return '';
+}
 
-      const list = $('#groupList', screen);
-      groups.forEach((group, groupIndex) => {
-        const card = document.createElement('div');
-        card.className = 'card category-card';
-        card.innerHTML = `
-          <div class="category-head">
-            <div class="handle-stack">
-              <button type="button" class="handle-button" data-action="move-group" data-index="${groupIndex}" data-delta="-1">↑</button>
-              <button type="button" class="handle-button" data-action="move-group" data-index="${groupIndex}" data-delta="1">↓</button>
-            </div>
-            <input class="category-input" value="${escapeHtml(group.category)}" data-action="category" data-group="${group.id}" aria-label="案件カテゴリ">
-            <span class="small">${formatHours(totalHours([group]))}h</span>
-            <button type="button" class="icon-button" data-action="delete-group" data-group="${group.id}">×</button>
-          </div>
-          <div class="category-main">
-            <div class="task-list">
-              ${group.tasks.map((task, taskIndex) => renderTaskRow(group.id, task, taskIndex)).join('')}
-            </div>
-            <div class="preset-row">
-              <span class="add-label">追加:</span>
-              <div class="chip-row">${state.reportPresets.map((preset) => `<button type="button" class="chip" data-action="preset" data-group="${group.id}" data-preset="${escapeHtml(preset)}">＋ ${escapeHtml(preset)}</button>`).join('')}</div>
-            </div>
-            <button type="button" class="secondary" data-action="add-task" data-group="${group.id}">空のタスク</button>
-          </div>
-        `;
-        list.appendChild(card);
-      });
+/* ---- 日報タブ ---- */
+function viewReport(){
+  const isToday = state.day === 'today';
+  const groups = groupsOf();
+  const dayHours = fmtHours(groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0));
+  const dayLabel = isToday ? '退勤報告' : '朝会報告';
 
-      bindReportEvents(screen);
-    }
+  const greetingCard = isToday ? `
+    <div class="card" style="overflow:hidden;">
+      <button class="collapse-head" style="padding:13px 15px;gap:11px;" onclick="App.toggleGreeting()">
+        <span style="display:flex;align-items:center;gap:11px;min-width:0;">
+          <span style="width:30px;height:30px;flex:none;border-radius:9px;background:color-mix(in srgb,var(--accent) 13%,transparent);display:flex;align-items:center;justify-content:center;color:var(--accent);">${I.greeting}</span>
+          <span style="min-width:0;text-align:left;">
+            <span style="display:block;font-size:13.5px;font-weight:700;">挨拶文</span>
+            <span style="display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px;">${esc(state.greeting.replace(/\n/g,' '))}</span>
+          </span>
+        </span>
+        <span class="chev" style="transform:rotate(${state.greetingOpen?180:0}deg);">${I.chev}</span>
+      </button>
+      ${state.greetingOpen ? `
+      <div style="padding:0 15px 15px;animation:popIn .2s ease;">
+        <textarea rows="2" data-k="greeting" oninput="App.setGreeting(this.value)" style="width:100%;resize:none;border:1px solid var(--border);background:var(--surface2);border-radius:11px;padding:11px 12px;font-size:13.5px;line-height:1.6;outline:none;">${esc(state.greeting)}</textarea>
+        <div style="font-size:11px;color:var(--faint);margin-top:6px;">「退勤報告」の冒頭にのみ挿入されます。</div>
+      </div>` : ''}
+    </div>` : '';
 
-    function renderGreetingCard() {
+  const cats = groups.map(g => {
+    const opacity = (state.drag && state.drag.type==='cat' && state.drag.catId===g.id) ? .4 : 1;
+    const gHours = fmtHours(g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0));
+    const nameArea = (state.editingCat === g.id) ? `
+      <div class="cat__name-edit">
+        <input class="cat__name-input" data-k="cat-${g.id}" value="${esc(g.category)}" oninput="App.setCategory(${g.id},this.value)" onkeydown="App.catKey(event)" placeholder="案件名" />
+        <button class="icon-btn" style="width:28px;height:28px;color:var(--accent);" onmousedown="event.preventDefault()" onclick="App.stopEditCat()" aria-label="完了">${I.check}</button>
+      </div>` : `
+      <button class="cat__name-btn" onclick="App.startEditCat(${g.id})">
+        <span class="cat__name-text">${esc(g.category)}</span>${I.pencil}
+      </button>`;
+
+    const tasks = g.tasks.map(t => {
+      const tOpacity = (state.drag && state.drag.type==='task' && state.drag.taskId===t.id) ? .4 : 1;
       return `
-        <div class="card greeting-card">
-          <div class="card-body">
-            <button type="button" class="secondary greeting-button" data-action="toggle-greeting">
-              <span class="greeting-text">
-                <strong>挨拶文</strong>
-                <span>${escapeHtml(state.reportWork.greeting.replace(/\n/g, ' '))}</span>
-              </span>
-              <span aria-hidden="true">⌄</span>
-            </button>
-            <div class="${state.ui.greetingOpen ? '' : 'hidden'}" style="margin-top:10px;">
-              <textarea rows="3" style="width:100%;" data-action="greeting">${escapeHtml(state.reportWork.greeting)}</textarea>
-            </div>
+      <div class="task" style="opacity:${tOpacity};" ondragenter="App.dragEnterTask(${g.id},${t.id})" ondragover="event.preventDefault()">
+        <div class="handle" draggable="true" ondragstart="App.dragStartTask(${g.id},${t.id},event)" ondragend="App.dragEnd()" title="ドラッグで並び替え">${I.grip}</div>
+        <div class="stepper" style="margin:6px 7px 6px 0;">
+          <button class="stepper__btn" onclick="App.bumpHours(${g.id},${t.id},-0.5)" aria-label="-0.5h">−</button>
+          <div class="stepper__val">
+            <input class="stepper__input mono" data-k="hours-${t.id}" value="${esc(fmtHours(t.hours))}" inputmode="decimal" oninput="App.setTaskHours(${g.id},${t.id},this.value)" />
+            <span class="mono" style="font-size:9.5px;color:var(--muted);">h</span>
+          </div>
+          <button class="stepper__btn" onclick="App.bumpHours(${g.id},${t.id},0.5)" aria-label="+0.5h">+</button>
+        </div>
+        <input class="task__name" data-k="task-${t.id}" value="${esc(t.name)}" oninput="App.setTaskName(${g.id},${t.id},this.value)" placeholder="タスク名" />
+        <button class="icon-btn task__del" onclick="App.deleteTask(${g.id},${t.id})" aria-label="削除">${I.close}</button>
+      </div>`;
+    }).join('');
+
+    const presetChips = state.presets.map(p =>
+      `<button class="chip" onclick="App.addTask(${g.id},'${esc(p).replace(/'/g,"\\'")}')">${I.plusSm}${esc(p)}</button>`
+    ).join('');
+
+    return `
+    <div class="card cat" style="opacity:${opacity};" ondragenter="App.dragEnterCat(${g.id})" ondragover="event.preventDefault()">
+      <div class="cat__head">
+        <div class="handle" draggable="true" ondragstart="App.dragStartCat(${g.id},event)" ondragend="App.dragEnd()" title="案件ごと並び替え">${I.grip}</div>
+        ${nameArea}
+        <span class="cat__hours mono">${gHours}h</span>
+        <button class="icon-btn cat__del" onclick="App.deleteCategory(${g.id})" aria-label="案件削除">${I.close}</button>
+      </div>
+      <div style="display:flex;flex-direction:column;">
+        ${tasks}
+        <div style="padding:9px 11px 11px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:var(--faint);margin-right:2px;">追加:</span>
+          ${presetChips}
+          <button class="chip chip--plain" onclick="App.addTask(${g.id},'')">空のタスク</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const o = outputBlocks();
+  const blockRows = [
+    { num:'1', title:'退勤報告', text:o.block1, fn:1 },
+    { num:'2', title:'今日やったこと', text:o.block2, fn:2 },
+    { num:'3', title:'明日やること', text:o.block3, fn:3 },
+  ].map(b => `
+    <div class="out">
+      <div class="out__head">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span class="out__num mono">${b.num}</span>
+          <span style="font-size:12.5px;font-weight:700;">${b.title}</span>
+        </div>
+        <button class="out__copy" onclick="App.copyBlock(${b.fn})">${I.copySm}コピー</button>
+      </div>
+      <pre class="out__body">${esc(b.text)}</pre>
+    </div>`).join('');
+
+  return `
+  <div class="tab">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">${dayLabel}の作業内容</div>
+      <div class="mono" style="font-size:12px;color:var(--faint);">計 ${dayHours}h</div>
+    </div>
+    ${greetingCard}
+    <div style="display:flex;flex-direction:column;gap:11px;">${cats}</div>
+    <button class="btn-dashed" onclick="App.addCategory()">${I.plus}案件カテゴリを追加</button>
+
+    <div class="card" style="padding:15px;margin-top:2px;">
+      <button class="collapse-head" onclick="App.toggleOutput()">
+        <span style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">出力プレビュー</span>
+        <span class="chev" style="transform:rotate(${state.outputOpen?180:0}deg);">${I.chev}</span>
+      </button>
+      ${state.outputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:11px;">${blockRows}</div>` : ''}
+      <div style="display:flex;gap:9px;margin-top:13px;">
+        <button class="btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAll()">${I.copy}3つまとめてコピー</button>
+        <button class="btn-ghost" style="flex:none;padding:12px 16px;border-radius:12px;font-size:13.5px;" onclick="App.sendSlack()">Slack送信</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---- タコスタブ ---- */
+function viewTacos(){
+  const blocks = state.blocks.map((b, i) => {
+    const recipients = b.recipients.map(r =>
+      `<span class="rcpt">${esc(r)}<button class="icon-btn" style="color:var(--accent);opacity:.7;padding:0;" onclick="App.removeRecipient(${b.id},'${esc(r).replace(/'/g,"\\'")}')" aria-label="外す">${I.closeSm}</button></span>`
+    ).join('');
+    const options = state.contacts.slice().sort((a,c)=>c.freq-a.freq)
+      .filter(c => !b.recipients.includes(c.name))
+      .map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    const tplChips = state.templates.map(t => {
+      const active = b.body.trim() === t.body;
+      return `<button class="tpl-chip ${active?'is-active':''}" onclick="App.setBody(${b.id},'${esc(t.body).replace(/'/g,"\\'")}')">${esc(t.label)}</button>`;
+    }).join('');
+    return `
+    <div class="block">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-top:3px;">
+          ${recipients || `<span style="font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 0;">宛先を選択してください</span>`}
+        </div>
+        <div style="flex:none;display:flex;align-items:center;gap:8px;">
+          <div class="count">
+            <button class="count__btn" onclick="App.bumpCount(${b.id},-1)">−</button>
+            <div class="count__val mono">${b.count}<span style="font-size:10px;">🌮</span></div>
+            <button class="count__btn" onclick="App.bumpCount(${b.id},1)">+</button>
+          </div>
+          <button class="icon-btn" style="padding:4px;" onclick="App.removeBlock(${b.id})" aria-label="削除">${I.close}</button>
+        </div>
+      </div>
+      <div class="select-wrap">
+        <select class="select" onchange="App.pickRecipient(${b.id},this.value); this.value='';">
+          <option value="" disabled selected>＋ 宛先を追加（連名可）</option>
+          ${options}
+        </select>
+        <span class="select-wrap__chev">${I.chev}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;">${tplChips}</div>
+      <textarea class="body-input" rows="2" data-k="block-${b.id}" oninput="App.setBody(${b.id},this.value)" placeholder="文面を入力">${esc(b.body)}</textarea>
+    </div>`;
+  }).join('');
+
+  const posts = tacoPosts();
+  const postRows = posts.map(p => `
+    <div class="post">
+      <div class="post__head">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:700;">投稿 ${p.num}</span>
+          <span class="post__badge mono">×${p.count}🌮</span>
+        </div>
+        <button class="out__copy" onclick="App.copyPost(${p.num})">${I.copySm}コピー</button>
+      </div>
+      <div class="post__body">${esc(p.text)}</div>
+      <div class="post__meta mono">消費: ${p.people}人 × ${p.count}個 = ${p.consume}個</div>
+    </div>`).join('');
+
+  const modeHint = state.tacoMode === 'split' ? '宛先を1人ずつ別の投稿に分けます（連名も分割）。' : '同じ個数の宛先を1つの投稿にまとめます。';
+
+  return `
+  <div class="tab">
+    <div style="display:flex;align-items:center;gap:10px;padding:2px 4px;">
+      <div style="font-size:24px;">🌮</div>
+      <div style="flex:1;"><div style="font-size:19px;font-weight:700;">タコスを贈る</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px;">${blocks}</div>
+    <button class="btn-dashed" onclick="App.addBlock()">${I.plus}宛先＋文面ブロックを追加</button>
+
+    <div class="card" style="padding:15px;">
+      <button class="collapse-head" onclick="App.toggleTacoOutput()">
+        <span style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">出力プレビュー</span>
+        <span style="display:flex;align-items:center;gap:8px;color:var(--faint);">
+          <span style="font-size:11px;">${posts.length}投稿</span>
+          <span class="chev" style="transform:rotate(${state.tacoOutputOpen?180:0}deg);">${I.chev}</span>
+        </span>
+      </button>
+      <div class="seg" style="border-radius:11px;margin-top:12px;">
+        <button class="seg__btn ${state.tacoMode==='merge'?'is-active':''}" style="font-size:12.5px;padding:9px;border-radius:8px;" onclick="App.setTacoMode('merge')">投稿をまとめる</button>
+        <button class="seg__btn ${state.tacoMode==='split'?'is-active':''}" style="font-size:12.5px;padding:9px;border-radius:8px;" onclick="App.setTacoMode('split')">個別で送る</button>
+      </div>
+      <div style="font-size:11px;color:var(--faint);margin-top:8px;padding:0 2px;line-height:1.5;">${modeHint}</div>
+      ${state.tacoOutputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">${postRows || `<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint);">宛先と文面を入力すると、ここに投稿が表示されます。</div>`}</div>` : ''}
+      ${posts.length ? `<button class="btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>` : ''}
+    </div>
+  </div>`;
+}
+
+/* ---- 設定タブ ---- */
+function viewSettings(){
+  const dark = state.theme === 'dark';
+  const accountName = currentUser ? (currentUser.displayName || currentUser.email || 'ログイン中') : '未ログイン';
+  const avatar = currentUser && currentUser.photoURL
+    ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;border-radius:50%;display:block;">`
+    : esc((accountName || '未').slice(0, 1));
+  const authButton = currentUser
+    ? `<button class="btn-ghost" style="flex:none;padding:8px 14px;border-radius:10px;font-size:12px;" onclick="googleLogout()">ログアウト</button>`
+    : `<button class="btn-primary" style="flex:none;padding:8px 14px;border-radius:10px;font-size:12px;" onclick="googleLogin()">ログイン</button>`;
+  const swatches = Object.keys(TONES).map(k => {
+    const color = TONES[k][dark?'d':'l'];
+    const sel = state.tone === k;
+    return `<button class="swatch" aria-label="${k}" style="background:${color};border-color:${sel?'var(--surface)':'transparent'};box-shadow:0 0 0 2px ${sel?color:'transparent'};" onclick="App.setTone('${k}')"></button>`;
+  }).join('');
+
+  const contacts = state.contacts.slice().sort((a,b)=>b.freq-a.freq);
+  const contactList = state.contactsOpen ? `
+    <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border2);border-radius:11px;background:var(--surface2);margin-bottom:11px;">
+      ${contacts.map(c => `
+        <div class="contact-row">
+          <span class="contact-row__ini">${esc(c.name.slice(0,1))}</span>
+          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.name)}</span>
+          <button class="icon-btn" style="width:26px;height:26px;border-radius:7px;" onclick="App.removeContact(${c.id})" aria-label="削除">${I.close}</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const presetTags = state.presets.map(p =>
+    `<span class="tag">${esc(p)}<button class="icon-btn" style="padding:0;" onclick="App.removePreset('${esc(p).replace(/'/g,"\\'")}')">${I.closeSm}</button></span>`
+  ).join('');
+
+  const tplRows = state.templates.map(t => `
+    <div class="tpl-row">
+      <span class="tpl-row__label">${esc(t.label)}</span>
+      <span style="flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.body)}</span>
+      <button class="icon-btn" onclick="App.removeTemplate('${t.id}')">${I.close}</button>
+    </div>`).join('');
+
+  return `
+  <div class="tab">
+    <div style="font-size:19px;font-weight:700;padding:2px 4px;">設定</div>
+
+    <div>
+      <div class="section-label">表示</div>
+      <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:13.5px;font-weight:600;">テーマ</div>
+          <div class="pill-group">
+            <button class="pill ${!dark?'is-active':''}" onclick="App.setTheme('light')">ライト</button>
+            <button class="pill ${dark?'is-active':''}" onclick="App.setTheme('dark')">ダーク</button>
           </div>
         </div>
-      `;
-    }
-
-    function renderTaskRow(groupId, task, taskIndex) {
-      return `
-        <div class="task-row">
-          <div class="handle-stack">
-            <button type="button" class="handle-button" data-action="move-task" data-group="${groupId}" data-index="${taskIndex}" data-delta="-1">↑</button>
-            <button type="button" class="handle-button" data-action="move-task" data-group="${groupId}" data-index="${taskIndex}" data-delta="1">↓</button>
-          </div>
-          <div class="hours-control">
-            <button type="button" class="mini-button" data-action="bump-hours" data-group="${groupId}" data-task="${task.id}" data-delta="-0.5">−</button>
-            <input type="number" step="0.5" min="0" value="${formatHours(task.hours)}" data-action="task-hours" data-group="${groupId}" data-task="${task.id}" aria-label="作業時間">
-            <button type="button" class="mini-button" data-action="bump-hours" data-group="${groupId}" data-task="${task.id}" data-delta="0.5">＋</button>
-          </div>
-          <input value="${escapeHtml(task.name)}" data-action="task-name" data-group="${groupId}" data-task="${task.id}" placeholder="タスク名">
-          <button type="button" class="icon-button" data-action="delete-task" data-group="${groupId}" data-task="${task.id}">×</button>
+        <div style="height:1px;background:var(--border2);"></div>
+        <div>
+          <div style="font-size:13.5px;font-weight:600;margin-bottom:11px;">アクセント</div>
+          <div style="display:flex;justify-content:space-between;">${swatches}</div>
         </div>
-      `;
-    }
+      </div>
+    </div>
 
-    function renderReportOutput(outputs) {
-      return `
-        <div class="card">
-          <div class="card-body">
-            <button type="button" class="secondary" style="width:100%;" data-action="toggle-output">出力プレビュー</button>
-            <div class="${state.ui.outputOpen ? '' : 'hidden'}" style="display:grid; gap:10px; margin-top:11px;">
-              ${outputs.map((block, index) => `
-                <div class="card">
-                  <div class="output-head">
-                    <span>${index + 1}. ${block.title}</span>
-                    <button type="button" class="chip" data-action="copy-output" data-index="${index}">コピー</button>
-                  </div>
-                  <pre class="output">${escapeHtml(block.text)}</pre>
-                </div>
-              `).join('')}
-            </div>
-            <div class="button-row" style="margin-top:13px;">
-              <button type="button" class="primary" data-action="copy-all-report">3つまとめてコピー</button>
-              <button type="button" class="secondary" data-action="send-slack">Slack送信</button>
-            </div>
-          </div>
+    <div>
+      <div class="section-label">Slack連携</div>
+      <div class="card" style="padding:14px;">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:7px;">Incoming Webhook URL</div>
+        <input class="field-input mono" data-k="webhook" style="font-size:12.5px;" value="${esc(state.webhook)}" oninput="App.setWebhook(this.value)" placeholder="https://hooks.slack.com/services/..." />
+        <div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:11px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px;">URLの取得手順</div>
+          <ol style="margin:0;padding-left:17px;font-size:11.5px;line-height:1.7;color:var(--muted);">
+            <li>api.slack.com/apps で「Create New App」→「From scratch」、ワークスペースを選んで作成</li>
+            <li>「OAuth &amp; Permissions」→ Bot Token Scopes に <b style="color:var(--text);">chat:write</b> を追加</li>
+            <li>「App Home」で表示名（Display Name）とユーザー名を設定</li>
+            <li>「Incoming Webhooks」を有効化</li>
+            <li>「Add New Webhook to Workspace」で送信先を選び許可</li>
+            <li>発行された <span class="mono" style="color:var(--text);">https://hooks.slack.com/services/...</span> をコピーして貼り付け</li>
+          </ol>
         </div>
-      `;
-    }
+        <div style="font-size:10.5px;color:var(--faint);margin-top:8px;">URLはこのブラウザ／本人のデータ領域にのみ保存されます。</div>
+      </div>
+    </div>
 
-    function bindReportEvents(root) {
-      $('[data-action="add-group"]', root).addEventListener('click', () => {
-        setActiveGroups([...activeGroups(), makeGroup()]);
-        persist();
-        render();
-      });
-
-      $$('[data-action="category"]', root).forEach((input) => {
-        input.addEventListener('change', () => updateReportGroup(input.dataset.group, (group) => ({ ...group, category: input.value })));
-      });
-
-      $$('[data-action="delete-group"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          const next = activeGroups().filter((group) => group.id !== button.dataset.group);
-          setActiveGroups(next.length ? next : [makeGroup()]);
-          persist();
-          render();
-        });
-      });
-
-      $$('[data-action="move-group"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          setActiveGroups(moveItem(activeGroups(), Number(button.dataset.index), Number(button.dataset.delta)));
-          persist();
-          render();
-        });
-      });
-
-      $$('[data-action="preset"]', root).forEach((button) => {
-        button.addEventListener('click', () => updateReportGroup(button.dataset.group, (group) => ({ ...group, tasks: [...group.tasks, makeTask(button.dataset.preset, 0.5)] })));
-      });
-
-      $$('[data-action="add-task"]', root).forEach((button) => {
-        button.addEventListener('click', () => updateReportGroup(button.dataset.group, (group) => ({ ...group, tasks: [...group.tasks, makeTask()] })));
-      });
-
-      $$('[data-action="task-name"]', root).forEach((input) => {
-        input.addEventListener('change', () => updateReportGroup(input.dataset.group, (group) => ({
-          ...group,
-          tasks: group.tasks.map((task) => task.id === input.dataset.task ? { ...task, name: input.value } : task),
-        })));
-      });
-
-      $$('[data-action="task-hours"]', root).forEach((input) => {
-        input.addEventListener('change', () => updateReportGroup(input.dataset.group, (group) => ({
-          ...group,
-          tasks: group.tasks.map((task) => task.id === input.dataset.task ? { ...task, hours: normalizeHours(input.value) } : task),
-        })));
-      });
-
-      $$('[data-action="bump-hours"]', root).forEach((button) => {
-        button.addEventListener('click', () => updateReportGroup(button.dataset.group, (group) => ({
-          ...group,
-          tasks: group.tasks.map((task) => task.id === button.dataset.task ? { ...task, hours: normalizeHours(Number(task.hours) + Number(button.dataset.delta)) } : task),
-        })));
-      });
-
-      $$('[data-action="delete-task"]', root).forEach((button) => {
-        button.addEventListener('click', () => updateReportGroup(button.dataset.group, (group) => {
-          const tasks = group.tasks.filter((task) => task.id !== button.dataset.task);
-          return { ...group, tasks: tasks.length ? tasks : [makeTask()] };
-        }));
-      });
-
-      $$('[data-action="move-task"]', root).forEach((button) => {
-        button.addEventListener('click', () => updateReportGroup(button.dataset.group, (group) => ({ ...group, tasks: moveItem(group.tasks, Number(button.dataset.index), Number(button.dataset.delta)) })));
-      });
-
-      const greeting = $('[data-action="greeting"]', root);
-      if (greeting) greeting.addEventListener('change', () => {
-        state.reportWork.greeting = greeting.value;
-        persist();
-        render();
-      });
-
-      const toggleGreeting = $('[data-action="toggle-greeting"]', root);
-      if (toggleGreeting) toggleGreeting.addEventListener('click', () => {
-        state.ui.greetingOpen = !state.ui.greetingOpen;
-        render();
-      });
-
-      $('[data-action="toggle-output"]', root).addEventListener('click', () => {
-        state.ui.outputOpen = !state.ui.outputOpen;
-        render();
-      });
-
-      $$('[data-action="copy-output"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          const block = reportOutputs()[Number(button.dataset.index)];
-          copyText(block.text, `${block.title}をコピーしました`);
-        });
-      });
-
-      $('[data-action="copy-all-report"]', root).addEventListener('click', () => {
-        copyText(reportOutputs().map((block) => block.text).join('\n\n'), '3まとまりをコピーしました');
-      });
-
-      $('[data-action="send-slack"]', root).addEventListener('click', async () => {
-        if (!state.webhookUrl) {
-          state.tab = 'settings';
-          render();
-          showToast('Slack送信先を設定してください');
-          return;
-        }
-        try {
-          for (const block of reportOutputs()) await postToSlack(block.text);
-          showToast('Slackへ送信しました');
-        } catch (error) {
-          showToast('Slackへ送信できませんでした');
-          console.error(error);
-        }
-      });
-    }
-
-    function renderTacos() {
-      const screen = $('#tacosScreen');
-      const posts = tacoPosts();
-      const sortedContacts = state.tacoContacts.slice().sort((a, b) => (b.sendCount || 0) - (a.sendCount || 0));
-      screen.innerHTML = `
-        <div class="segmented">
-          <button type="button" class="${state.tacoMode === 'merge' ? 'active' : ''}" data-action="taco-mode" data-mode="merge">投稿をまとめる</button>
-          <button type="button" class="${state.tacoMode === 'split' ? 'active' : ''}" data-action="taco-mode" data-mode="split">個別で送る</button>
+    <div>
+      <div class="section-label">Googleログイン</div>
+      <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px;">
+        <div class="avatar avatar--lg">${avatar}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(accountName)}</div>
+          <div style="font-size:11px;color:var(--muted);">${currentUser ? 'ログイン中 ・ PC⇔スマホ同期 ON' : '未ログイン ・ この端末に保存中'}</div>
         </div>
-        <div id="tacoBlocks"></div>
-        <button type="button" class="secondary" data-action="add-taco-block">投稿ブロックを追加</button>
-        <div class="card">
-          <div class="card-body">
-            <button type="button" class="secondary" style="width:100%;" data-action="toggle-taco-output">出力プレビュー</button>
-            <div id="tacoPosts" class="${state.ui.tacoOutputOpen ? '' : 'hidden'}" style="display:grid; gap:10px; margin-top:11px;"></div>
-            <button type="button" class="primary" style="width:100%; margin-top:13px;" data-action="copy-all-tacos" ${posts.length ? '' : 'disabled'}>全投稿をまとめてコピー</button>
-          </div>
+        ${authButton}
+      </div>
+      <div style="font-size:10.5px;color:var(--faint);padding:7px 4px 0;line-height:1.6;">ログインするとPC⇔スマホでデータが同期され、他の人のデータとは分離されます。</div>
+    </div>
+
+    <div>
+      <div class="section-label">タコス送信相手</div>
+      <div class="card" style="padding:14px;">
+        ${state.contacts.length ? `
+        <button class="collapse-head" style="border:1px solid var(--border);background:var(--surface2);border-radius:11px;padding:11px 12px;margin-bottom:11px;" onclick="App.toggleContacts()">
+          <span style="font-size:12.5px;font-weight:700;">登録済み ${state.contacts.length}名</span>
+          <span style="display:flex;align-items:center;gap:7px;color:var(--faint);">
+            <span style="font-size:11px;font-weight:600;">${state.contactsOpen?'閉じる':'一覧'}</span>
+            <span class="chev" style="transform:rotate(${state.contactsOpen?180:0}deg);">${I.chev}</span>
+          </span>
+        </button>${contactList}` : ''}
+        <textarea class="field-input" data-k="bulk" rows="4" style="line-height:1.7;border-radius:11px;" oninput="App.setBulkText(this.value)" placeholder="1行に1人ずつ名前を貼り付け（「＠」は不要）&#10;例：&#10;メンバーA&#10;メンバーB&#10;メンバーC">${esc(state.bulkText)}</textarea>
+        <button class="btn-primary" style="width:100%;margin-top:9px;padding:11px;border-radius:11px;font-size:13px;" onclick="App.bulkImport()">一括登録</button>
+        <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">改行が人の区切りです。「＠」は文面生成時に自動で付きます。登録した相手はタコスタブの宛先に表示されます。</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">本日のタコス消費</div>
+      <div class="card" style="padding:14px;">
+        <input class="field-input mono" type="number" min="0" value="${state.accumulated}" oninput="App.setAccumulated(this.value)" aria-label="本日のタコス消費数" />
+        <div style="font-size:10.5px;color:var(--faint);margin-top:8px;">コピーで自動加算されます。必要な場合は手動で調整できます。</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">日報プリセット（作業名）</div>
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">${presetTags}</div>
+        <div style="display:flex;gap:8px;margin-top:11px;">
+          <input class="field-input" data-k="newPreset" value="${esc(state.newPreset)}" oninput="App.setNewPreset(this.value)" placeholder="新しいプリセット名" />
+          <button class="btn-primary" style="flex:none;padding:0 16px;border-radius:10px;font-size:13px;" onclick="App.addPreset()">追加</button>
         </div>
-      `;
+      </div>
+    </div>
 
-      const blockRoot = $('#tacoBlocks', screen);
-      state.tacoBlocks.forEach((block, index) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="card-body inline-form">
-            <div class="section-title" style="padding:0;">
-              <span>ブロック ${index + 1}</span>
-              <button type="button" class="chip" data-action="remove-taco-block" data-block="${block.id}">削除</button>
-            </div>
-            <div class="contact-tags">
-              ${block.recipients.map((recipient) => `<span class="contact-tag">${escapeHtml(recipient)}<button type="button" data-action="remove-recipient" data-block="${block.id}" data-recipient="${escapeHtml(recipient)}">×</button></span>`).join('')}
-            </div>
-            <select data-action="add-recipient" data-block="${block.id}">
-              <option value="">宛先を追加</option>
-              ${sortedContacts.filter((contact) => !block.recipients.includes(contact.name)).map((contact) => `<option value="${escapeHtml(contact.name)}">${escapeHtml(contact.name)}（${contact.sendCount || 0}回）</option>`).join('')}
-            </select>
-            <div class="two-col">
-              <input type="number" min="1" max="9" value="${block.count}" data-action="taco-count" data-block="${block.id}" aria-label="タコス個数">
-              <select data-action="template" data-block="${block.id}">
-                <option value="">テンプレート</option>
-                ${state.tacoTemplates.map((template) => `<option value="${escapeHtml(template.body)}">${escapeHtml(template.label)}</option>`).join('')}
-              </select>
-            </div>
-            <textarea rows="3" data-action="taco-body" data-block="${block.id}" placeholder="文面">${escapeHtml(block.body)}</textarea>
-          </div>
-        `;
-        blockRoot.appendChild(card);
-      });
-
-      const postRoot = $('#tacoPosts', screen);
-      postRoot.innerHTML = posts.length ? posts.map((post) => `
-        <div class="card">
-          <div class="output-head">
-            <span>投稿 ${post.num} / 消費 ${post.people}人 × ${post.count}個 = ${post.consume}個</span>
-            <button type="button" class="chip" data-action="copy-taco-post" data-index="${post.num - 1}">コピー</button>
-          </div>
-          <pre class="output">${escapeHtml(post.text)}</pre>
+    <div>
+      <div class="section-label">タコス テンプレート</div>
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;flex-direction:column;gap:8px;">${tplRows}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input class="field-input" data-k="tpl-label" style="flex:none;width:84px;" value="${esc(state.newTemplateLabel)}" oninput="App.setTplLabel(this.value)" placeholder="ラベル" />
+          <input class="field-input" data-k="tpl-body" value="${esc(state.newTemplateBody)}" oninput="App.setTplBody(this.value)" placeholder="文面（例：レビューありがとうございました！）" />
         </div>
-      `).join('') : '<div class="small">宛先と文面を入れるとプレビューが表示されます。</div>';
+        <button class="btn-primary" style="width:100%;margin-top:9px;padding:11px;border-radius:10px;font-size:13px;" onclick="App.addTemplate()">テンプレートを追加</button>
+      </div>
+    </div>
+  </div>`;
+}
 
-      bindTacoEvents(screen);
-    }
+function viewNav(){
+  const c = (t) => state.tab === t ? 'is-active' : '';
+  return `
+  <div class="nav">
+    <button class="nav__btn ${c('report')}" onclick="App.go('report')">${I.navReport}<span class="nav__label">日報</span></button>
+    <button class="nav__btn ${c('tacos')}" onclick="App.go('tacos')"><span style="font-size:19px;line-height:21px;filter:${state.tab==='tacos'?'none':'grayscale(1) opacity(.55)'};">🌮</span><span class="nav__label">タコス</span></button>
+    <button class="nav__btn ${c('settings')}" onclick="App.go('settings')">${I.navSettings}<span class="nav__label">設定</span></button>
+  </div>`;
+}
 
-    function bindTacoEvents(root) {
-      $$('[data-action="taco-mode"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.tacoMode = button.dataset.mode;
-          persist();
-          render();
-        });
-      });
+/* =========================================================================
+   render — 状態から全画面を組み立て、フォーカス位置を復元
+   ========================================================================= */
+function render(){
+  const app = document.getElementById('app');
+  if (!app) return;
+  syncDailyUsage();
+  app.dataset.tab = state.tab;
 
-      $('[data-action="add-taco-block"]', root).addEventListener('click', () => {
-        state.tacoBlocks.push(makeTacoBlock());
-        persist();
-        render();
-      });
+  // 再描画前にフォーカス中の入力欄とキャレット位置を記録
+  const active = document.activeElement;
+  const fk = active && active.getAttribute ? active.getAttribute('data-k') : null;
+  let selStart = null, selEnd = null;
+  if (fk) { try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch(e){} }
 
-      $$('[data-action="remove-taco-block"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.tacoBlocks = state.tacoBlocks.filter((block) => block.id !== button.dataset.block);
-          if (!state.tacoBlocks.length) state.tacoBlocks = [makeTacoBlock()];
-          persist();
-          render();
-        });
-      });
+  let body = '';
+  if (state.tab === 'report')   body = viewReport();
+  if (state.tab === 'tacos')    body = viewTacos();
+  if (state.tab === 'settings') body = viewSettings();
 
-      $$('[data-action="add-recipient"]', root).forEach((select) => {
-        select.addEventListener('change', () => {
-          if (!select.value) return;
-          state.tacoBlocks = state.tacoBlocks.map((block) => block.id === select.dataset.block && !block.recipients.includes(select.value) ? { ...block, recipients: [...block.recipients, select.value] } : block);
-          persist();
-          render();
-        });
-      });
+  app.innerHTML =
+    viewHeader() +
+    viewSubheader() +
+    `<div class="scroll">${body}</div>` +
+    viewNav() +
+    (state.toast ? `<div class="toast">${esc(state.toast)}</div>` : '');
 
-      $$('[data-action="remove-recipient"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.tacoBlocks = state.tacoBlocks.map((block) => block.id === button.dataset.block ? { ...block, recipients: block.recipients.filter((recipient) => recipient !== button.dataset.recipient) } : block);
-          persist();
-          render();
-        });
-      });
+  // フォーカス復元
+  if (fk) {
+    const el = app.querySelector('[data-k="' + (window.CSS && CSS.escape ? CSS.escape(fk) : fk) + '"]');
+    if (el) { el.focus(); if (selStart != null) { try { el.setSelectionRange(selStart, selEnd); } catch(e){} } }
+  }
+}
 
-      $$('[data-action="taco-count"]', root).forEach((input) => {
-        input.addEventListener('change', () => {
-          state.tacoBlocks = state.tacoBlocks.map((block) => block.id === input.dataset.block ? { ...block, count: Math.max(1, Math.min(9, Number(input.value || 1))) } : block);
-          persist();
-          render();
-        });
-      });
-
-      $$('[data-action="template"]', root).forEach((select) => {
-        select.addEventListener('change', () => {
-          if (!select.value) return;
-          state.tacoBlocks = state.tacoBlocks.map((block) => block.id === select.dataset.block ? { ...block, body: select.value } : block);
-          persist();
-          render();
-        });
-      });
-
-      $$('[data-action="taco-body"]', root).forEach((textarea) => {
-        textarea.addEventListener('change', () => {
-          state.tacoBlocks = state.tacoBlocks.map((block) => block.id === textarea.dataset.block ? { ...block, body: textarea.value } : block);
-          persist();
-          render();
-        });
-      });
-
-      $('[data-action="toggle-taco-output"]', root).addEventListener('click', () => {
-        state.ui.tacoOutputOpen = !state.ui.tacoOutputOpen;
-        render();
-      });
-
-      $$('[data-action="copy-taco-post"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          const post = tacoPosts()[Number(button.dataset.index)];
-          copyText(post.text, `投稿${post.num}をコピーしました`, () => addTacoUsage([post]));
-        });
-      });
-
-      $('[data-action="copy-all-tacos"]', root).addEventListener('click', () => {
-        const posts = tacoPosts();
-        if (!posts.length) return;
-        copyText(posts.map((post) => post.text).join('\n\n'), `全${posts.length}投稿をコピーしました`, () => addTacoUsage(posts));
-      });
-    }
-
-    function renderSettings() {
-      const screen = $('#settingsScreen');
-      screen.innerHTML = `
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>Googleログイン</span></div>
-            <div class="small">ログインすると、このブラウザの入力内容を本人のデータ領域に同期します。</div>
-            <div class="button-row">
-              <button type="button" class="primary" data-action="login">ログイン</button>
-              <button type="button" class="secondary" data-action="logout">ログアウト</button>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>Slack連携</span></div>
-            <input value="${escapeHtml(state.webhookUrl)}" data-action="webhook" placeholder="https://hooks.slack.com/services/...">
-            <div class="small">Webhook URLはこのブラウザとログイン中の本人データ領域に保存されます。</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>表示</span></div>
-            <div class="segmented">
-              <button type="button" class="${state.theme === 'light' ? 'active' : ''}" data-action="theme" data-theme="light">ライト</button>
-              <button type="button" class="${state.theme === 'dark' ? 'active' : ''}" data-action="theme" data-theme="dark">ダーク</button>
-            </div>
-            <div class="accent-grid">
-              ${Object.entries(ACCENTS).map(([key, color]) => `<button type="button" class="swatch ${state.accentColor === key ? 'active' : ''}" data-action="accent" data-accent="${key}" style="background:${color};" aria-label="${key}"></button>`).join('')}
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>タコス送信相手</span><span>${state.tacoContacts.length}人</span></div>
-            <textarea rows="5" data-action="bulk-contacts" placeholder="田中\n佐藤\n鈴木"></textarea>
-            <button type="button" class="primary" data-action="import-contacts">一括登録</button>
-            <div class="chip-row">${state.tacoContacts.map((contact) => `<span class="contact-tag">${escapeHtml(contact.name)}<button type="button" data-action="delete-contact" data-contact="${contact.id}">×</button></span>`).join('')}</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>日報プリセット</span></div>
-            <div class="chip-row">${state.reportPresets.map((preset) => `<span class="contact-tag">${escapeHtml(preset)}<button type="button" data-action="delete-preset" data-preset="${escapeHtml(preset)}">×</button></span>`).join('')}</div>
-            <div class="button-row">
-              <input data-action="new-preset" placeholder="作業名">
-              <button type="button" class="primary" data-action="add-preset">追加</button>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>タコステンプレート</span></div>
-            <div class="chip-row">${state.tacoTemplates.map((template) => `<span class="contact-tag">${escapeHtml(template.label)}<button type="button" data-action="delete-template" data-template="${template.id}">×</button></span>`).join('')}</div>
-            <input data-action="new-template-label" placeholder="ラベル">
-            <textarea rows="3" data-action="new-template-body" placeholder="文面"></textarea>
-            <button type="button" class="primary" data-action="add-template">テンプレートを追加</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body settings-row">
-            <div class="section-title" style="padding:0;"><span>本日のタコス消費</span></div>
-            <div class="two-col">
-              <input type="number" min="0" value="${normalizeUsage(state.tacoUsage).consumed}" data-action="usage-consumed" aria-label="消費数">
-              <input type="number" min="1" value="${normalizeUsage(state.tacoUsage).dailyLimit}" data-action="usage-limit" aria-label="上限">
-            </div>
-          </div>
-        </div>
-      `;
-      bindSettingsEvents(screen);
-    }
-
-    function bindSettingsEvents(root) {
-      $('[data-action="login"]', root).addEventListener('click', googleLogin);
-      $('[data-action="logout"]', root).addEventListener('click', googleLogout);
-      $('[data-action="webhook"]', root).addEventListener('change', (event) => {
-        state.webhookUrl = event.target.value.trim();
-        persist(true);
-        showToast('Slack送信先を保存しました');
-      });
-      $$('[data-action="theme"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.theme = button.dataset.theme;
-          persist();
-          render();
-        });
-      });
-      $$('[data-action="accent"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.accentColor = button.dataset.accent;
-          persist();
-          render();
-        });
-      });
-      $('[data-action="import-contacts"]', root).addEventListener('click', () => {
-        const textarea = $('[data-action="bulk-contacts"]', root);
-        const names = textarea.value.split('\n').map((name) => name.replace(/^[＠@\s]+/, '').trim()).filter(Boolean);
-        const existing = new Set(state.tacoContacts.map((contact) => contact.name));
-        let added = 0;
-        names.forEach((name) => {
-          if (!existing.has(name)) {
-            existing.add(name);
-            state.tacoContacts.push({ id: id(), name, slackUserId: null, sendCount: 0 });
-            added++;
-          }
-        });
-        persist(true);
-        render();
-        showToast(added ? `${added}人を登録しました` : '新しい相手はありませんでした');
-      });
-      $$('[data-action="delete-contact"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          const target = state.tacoContacts.find((contact) => contact.id === button.dataset.contact);
-          state.tacoContacts = state.tacoContacts.filter((contact) => contact.id !== button.dataset.contact);
-          if (target) state.tacoBlocks = state.tacoBlocks.map((block) => ({ ...block, recipients: block.recipients.filter((recipient) => recipient !== target.name) }));
-          persist(true);
-          render();
-        });
-      });
-      $('[data-action="add-preset"]', root).addEventListener('click', () => {
-        const input = $('[data-action="new-preset"]', root);
-        const value = input.value.trim();
-        if (!value) return;
-        if (!state.reportPresets.includes(value)) state.reportPresets.push(value);
-        persist(true);
-        render();
-      });
-      $$('[data-action="delete-preset"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.reportPresets = state.reportPresets.filter((preset) => preset !== button.dataset.preset);
-          persist(true);
-          render();
-        });
-      });
-      $('[data-action="add-template"]', root).addEventListener('click', () => {
-        const label = $('[data-action="new-template-label"]', root).value.trim();
-        const body = $('[data-action="new-template-body"]', root).value.trim();
-        if (!label || !body) {
-          showToast('ラベルと文面を入力してください');
-          return;
-        }
-        state.tacoTemplates.push({ id: id(), label, body });
-        persist(true);
-        render();
-      });
-      $$('[data-action="delete-template"]', root).forEach((button) => {
-        button.addEventListener('click', () => {
-          state.tacoTemplates = state.tacoTemplates.filter((template) => template.id !== button.dataset.template);
-          persist(true);
-          render();
-        });
-      });
-      $('[data-action="usage-consumed"]', root).addEventListener('change', (event) => {
-        const usage = normalizeUsage(state.tacoUsage);
-        state.tacoUsage = { ...usage, consumed: Math.max(0, Number(event.target.value || 0)) };
-        persist(true);
-        render();
-      });
-      $('[data-action="usage-limit"]', root).addEventListener('change', (event) => {
-        const usage = normalizeUsage(state.tacoUsage);
-        state.tacoUsage = { ...usage, dailyLimit: Math.max(1, Number(event.target.value || 5)) };
-        persist(true);
-        render();
-      });
-    }
-
-    function boot() {
-      applyStoredData(loadLocal());
-      render();
-      initFirebase();
-      $$('.bottom-nav button').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.tab)));
-      $('#subbar').addEventListener('click', (event) => {
-        const button = event.target.closest('[data-action="report-mode"]');
-        if (button) setReportMode(button.dataset.mode);
-      });
-      window.googleLogin = googleLogin;
-      window.googleLogout = googleLogout;
-      window.userDocRef = userDocRef;
-      window.loadFromFirestore = loadFromFirestore;
-      window.saveToFirestore = saveToFirestore;
-      window.debouncedFirestoreSave = debouncedFirestoreSave;
-      window.postToSlack = postToSlack;
-    }
-
-    document.addEventListener('DOMContentLoaded', boot);
-  </script>
+/* 起動 */
+function boot(){
+  applyStoredData(loadLocal());
+  applyTheme();
+  render();
+  initFirebase();
+  window.googleLogin = googleLogin;
+  window.googleLogout = googleLogout;
+  window.userDocRef = userDocRef;
+  window.loadFromFirestore = loadFromFirestore;
+  window.saveToFirestore = saveToFirestore;
+  window.debouncedFirestoreSave = debouncedFirestoreSave;
+  window.postToSlack = postToSlack;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+</script>
 </body>
 </html>
