@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -296,6 +296,8 @@ const state = {
   nextContactId: 1,
   bulkText: '',
   contactsOpen: false,
+  editingContactId: null,
+  editContactName: '',
   blocks: [
     { id: uid(), recipients: [], count: 1, body: '' },
   ],
@@ -305,6 +307,9 @@ const state = {
     { id: 't3', label: 'ヘルプ', body: '急ぎの対応ありがとうございました！本当に助かりました' },
   ],
   newTemplateLabel: '', newTemplateBody: '',
+  editingTemplateId: null,
+  editTemplateLabel: '',
+  editTemplateBody: '',
   tacoMode: 'merge',        // merge(投稿をまとめる) | split(個別で送る)
   tacoOutputOpen: true,
   accumulated: 0,           // 本日の消費（コピー時に加算）
@@ -588,7 +593,7 @@ function tacoPosts(){
     const posts = []; let n = 0;
     valid.forEach(b => b.recipients.forEach(r => {
       n++;
-      posts.push({ num: n, count: b.count, people: 1, consume: b.count, text: '＠' + r + '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count) });
+      posts.push({ num: n, count: b.count, people: 1, consume: b.count, text: r + '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count) });
     }));
     return posts;
   }
@@ -596,7 +601,7 @@ function tacoPosts(){
   valid.forEach(b => { (byCount[b.count] = byCount[b.count] || []).push(b); });
   return Object.keys(byCount).map(Number).sort((a,b) => b - a).map((c, i) => {
     const bs = byCount[c];
-    const text = bs.map(b => b.recipients.map(r => '＠' + r).join(' ') + '\n' + b.body.trim()).join('\n\n') + '\n' + '🌮'.repeat(c);
+    const text = bs.map(b => b.recipients.join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
     const people = bs.reduce((a,b) => a + b.recipients.length, 0);
     return { num: i + 1, count: c, people, consume: people * c, text };
   });
@@ -644,10 +649,31 @@ const App = {
   bumpHours(catId, taskId, d){ const g = findCat(catId); const t = g && g.tasks.find(t => t.id === taskId); if(t) t.hours = Math.max(0, Math.round((t.hours + d)*2)/2); render(); },
   deleteTask(catId, taskId){ const g = findCat(catId); if(g){ const i = g.tasks.findIndex(t => t.id === taskId); if(i>=0) g.tasks.splice(i,1);} render(); },
 
-  /* ドラッグ並び替え（HTML5 DnD） */
-  dragStartCat(catId, e){ try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','c'); }catch(x){} state.drag = { type:'cat', catId }; render(); },
-  dragStartTask(catId, taskId, e){ try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','t'); }catch(x){} state.drag = { type:'task', catId, taskId }; render(); },
-  dragEnd(){ state.drag = null; render(); },
+  /* Pointer Events 並び替え */
+  pointerStartCat(catId, e){ this.pointerStart({ type:'cat', catId }, e); },
+  pointerStartTask(catId, taskId, e){ this.pointerStart({ type:'task', catId, taskId }, e); },
+  pointerStart(payload, e){
+    if(e && e.preventDefault) e.preventDefault();
+    if(e && e.currentTarget && e.currentTarget.setPointerCapture && e.pointerId != null){
+      try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(x){}
+    }
+    state.drag = payload;
+    if(!this._pointerEnd){
+      this._pointerEnd = () => this.pointerEnd();
+      document.addEventListener('pointerup', this._pointerEnd);
+      document.addEventListener('pointercancel', this._pointerEnd);
+    }
+    render();
+  },
+  pointerEnd(){
+    state.drag = null;
+    if(this._pointerEnd){
+      document.removeEventListener('pointerup', this._pointerEnd);
+      document.removeEventListener('pointercancel', this._pointerEnd);
+      this._pointerEnd = null;
+    }
+    render();
+  },
   dragEnterCat(catId){ const d = state.drag; if(!d || d.type!=='cat' || d.catId===catId) return; const arr = groupsOf(); const from = arr.findIndex(g=>g.id===d.catId), to = arr.findIndex(g=>g.id===catId); if(from<0||to<0) return; const [m] = arr.splice(from,1); arr.splice(to,0,m); render(); },
   dragEnterTask(catId, taskId){ const d = state.drag; if(!d || d.type!=='task' || d.catId!==catId || d.taskId===taskId) return; const g = findCat(catId); if(!g) return; const from = g.tasks.findIndex(t=>t.id===d.taskId), to = g.tasks.findIndex(t=>t.id===taskId); if(from<0||to<0) return; const [m] = g.tasks.splice(from,1); g.tasks.splice(to,0,m); render(); },
 
@@ -716,23 +742,56 @@ const App = {
     render();
     toast(added ? added + '人を登録しました' : '新しい相手はありませんでした');
   },
-  removeContact(id){ state.contacts = state.contacts.filter(c => c.id !== id); render(); },
+  startEditContact(id){ const c = state.contacts.find(c => c.id === id); if(!c) return; state.editingContactId = id; state.editContactName = c.name; render(); },
+  setEditContactName(v){ state.editContactName = v; },
+  commitEditContact(id){
+    const c = state.contacts.find(c => c.id === id);
+    if(!c) return;
+    const oldName = c.name;
+    const newName = state.editContactName.replace(/^[＠@\s]+/,'').trim();
+    if(!newName){ toast('名前を入力してください'); return; }
+    if(state.contacts.some(x => x.id !== id && x.name === newName)){ toast('同じ名前が登録済みです'); return; }
+    c.name = newName;
+    state.blocks.forEach(b => { b.recipients = b.recipients.map(r => r === oldName ? newName : r); });
+    state.editingContactId = null;
+    state.editContactName = '';
+    render();
+  },
+  cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; render(); },
+  removeContact(id){ const c = state.contacts.find(c => c.id === id); state.contacts = state.contacts.filter(c => c.id !== id); if(c) state.blocks.forEach(b => { b.recipients = b.recipients.filter(r => r !== c.name); }); render(); },
   setTplLabel(v){ state.newTemplateLabel = v; },
   setTplBody(v){ state.newTemplateBody = v; },
   addTemplate(){ const label = state.newTemplateLabel.trim(), body = state.newTemplateBody.trim(); if(!label || !body){ toast('ラベルと文面を入力してください'); return; } state.templates.push({ id: 'tpl'+uid(), label, body }); state.newTemplateLabel=''; state.newTemplateBody=''; render(); toast('テンプレートを追加しました'); },
+  startEditTemplate(id){ const t = state.templates.find(t => t.id === id); if(!t) return; state.editingTemplateId = id; state.editTemplateLabel = t.label; state.editTemplateBody = t.body; render(); },
+  setEditTemplateLabel(v){ state.editTemplateLabel = v; },
+  setEditTemplateBody(v){ state.editTemplateBody = v; },
+  commitEditTemplate(id){
+    const t = state.templates.find(t => t.id === id);
+    if(!t) return;
+    const label = state.editTemplateLabel.trim();
+    const body = state.editTemplateBody.trim();
+    if(!label || !body){ toast('ラベルと文面を入力してください'); return; }
+    t.label = label;
+    t.body = body;
+    state.editingTemplateId = null;
+    state.editTemplateLabel = '';
+    state.editTemplateBody = '';
+    render();
+  },
+  cancelEditTemplate(){ state.editingTemplateId = null; state.editTemplateLabel = ''; state.editTemplateBody = ''; render(); },
   removeTemplate(id){ state.templates = state.templates.filter(t => t.id !== id); render(); },
 };
 window.App = App;
 
-const LOCAL_ONLY_ACTIONS = new Set(['go','setDay','toggleGreeting','startEditCat','stopEditCat','toggleContacts','toggleOutput','toggleTacoOutput']);
+const LOCAL_ONLY_ACTIONS = new Set(['go','setDay','toggleGreeting','startEditCat','stopEditCat','toggleContacts','toggleOutput','toggleTacoOutput','pointerStartCat','pointerStartTask','pointerStart','pointerEnd','startEditContact','cancelEditContact','startEditTemplate','cancelEditTemplate']);
 const SAVE_ACTIONS = new Set([
   'setTheme','setTone','setGreeting','setCategory','deleteCategory','addCategory','addTask',
   'setTaskName','setTaskHours','bumpHours','deleteTask','dragEnterCat','dragEnterTask',
   'addPreset','removePreset','addBlock','removeBlock','bumpCount','setBody','pickRecipient',
   'removeRecipient','setTacoMode','setWebhook','bulkImport','removeContact','addTemplate',
-  'removeTemplate','copyPost','copyAllTacos','quickCopy',
+  'commitEditContact','commitEditTemplate','removeTemplate','copyPost','copyAllTacos','quickCopy',
 ]);
-const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','addPreset','removePreset','addTemplate','removeTemplate','copyPost','copyAllTacos','quickCopy','setTheme','setTone','setWebhook']);
+const IMMEDIATE_SAVE_ACTIONS = new Set(['bulkImport','removeContact','commitEditContact','addPreset','removePreset','addTemplate','commitEditTemplate','removeTemplate','copyPost','copyAllTacos','quickCopy','setTheme','setTone','setWebhook']);
 Object.keys(App).forEach((name) => {
   if (!LOCAL_ONLY_ACTIONS.has(name) && !SAVE_ACTIONS.has(name)) return;
   const original = App[name];
@@ -813,7 +872,11 @@ function viewSubheader(){
 function viewReport(){
   const isToday = state.day === 'today';
   const groups = groupsOf();
-  const dayHours = fmtHours(groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0));
+  const dayHoursValue = groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0);
+  const dayHours = fmtHours(dayHoursValue);
+  const dayHoursState = Math.round(dayHoursValue * 2) === 16 ? 'just' : dayHoursValue > 8 ? 'over' : 'under';
+  const dayHoursColor = dayHoursState === 'over' ? 'var(--danger)' : dayHoursState === 'under' ? 'var(--taco)' : 'var(--ok)';
+  const dayHoursSize = dayHoursState === 'just' ? '13px' : '17px';
   const dayLabel = isToday ? '退勤報告' : '朝会報告';
 
   const greetingCard = isToday ? `
@@ -850,8 +913,8 @@ function viewReport(){
     const tasks = g.tasks.map(t => {
       const tOpacity = (state.drag && state.drag.type==='task' && state.drag.taskId===t.id) ? .4 : 1;
       return `
-      <div class="task" style="opacity:${tOpacity};" ondragenter="App.dragEnterTask(${g.id},${t.id})" ondragover="event.preventDefault()">
-        <div class="handle" draggable="true" ondragstart="App.dragStartTask(${g.id},${t.id},event)" ondragend="App.dragEnd()" title="ドラッグで並び替え">${I.grip}</div>
+      <div class="task" style="opacity:${tOpacity};" onpointerenter="App.dragEnterTask(${g.id},${t.id})">
+        <div class="handle" onpointerdown="App.pointerStartTask(${g.id},${t.id},event)" onpointerup="App.pointerEnd()" onpointercancel="App.pointerEnd()" title="ドラッグで並び替え">${I.grip}</div>
         <div class="stepper" style="margin:6px 7px 6px 0;">
           <button class="stepper__btn" onclick="App.bumpHours(${g.id},${t.id},-0.5)" aria-label="-0.5h">−</button>
           <div class="stepper__val">
@@ -870,9 +933,9 @@ function viewReport(){
     ).join('');
 
     return `
-    <div class="card cat" style="opacity:${opacity};" ondragenter="App.dragEnterCat(${g.id})" ondragover="event.preventDefault()">
+    <div class="card cat" style="opacity:${opacity};" onpointerenter="App.dragEnterCat(${g.id})">
       <div class="cat__head">
-        <div class="handle" draggable="true" ondragstart="App.dragStartCat(${g.id},event)" ondragend="App.dragEnd()" title="案件ごと並び替え">${I.grip}</div>
+        <div class="handle" onpointerdown="App.pointerStartCat(${g.id},event)" onpointerup="App.pointerEnd()" onpointercancel="App.pointerEnd()" title="案件ごと並び替え">${I.grip}</div>
         ${nameArea}
         <span class="cat__hours mono">${gHours}h</span>
         <button class="icon-btn cat__del" onclick="App.deleteCategory(${g.id})" aria-label="案件削除">${I.close}</button>
@@ -909,7 +972,7 @@ function viewReport(){
   <div class="tab">
     <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">${dayLabel}の作業内容</div>
-      <div class="mono" style="font-size:12px;color:var(--faint);">計 ${dayHours}h</div>
+      <div class="mono" style="font-size:${dayHoursSize};color:${dayHoursColor};font-weight:900;">計 ${dayHours}h</div>
     </div>
     ${greetingCard}
     <div style="display:flex;flex-direction:column;gap:11px;">${cats}</div>
@@ -984,6 +1047,7 @@ function viewTacos(){
     </div>`).join('');
 
   const modeHint = state.tacoMode === 'split' ? '宛先を1人ずつ別の投稿に分けます（連名も分割）。' : '同じ個数の宛先を1つの投稿にまとめます。';
+  const mentionHint = 'ヒント: Slackに貼り付けた後、名前の前に @ を付けると候補から選べます。';
 
   return `
   <div class="tab">
@@ -1003,6 +1067,9 @@ function viewTacos(){
         <button class="seg__btn ${state.tacoMode==='split'?'is-active':''}" style="font-size:12.5px;padding:9px;border-radius:8px;" onclick="App.setTacoMode('split')">個別で送る</button>
       </div>
       <div style="font-size:11px;color:var(--faint);margin-top:8px;padding:0 2px;line-height:1.5;">${modeHint}</div>
+      <div style="display:flex;gap:6px;align-items:flex-start;font-size:10.8px;color:var(--muted);margin-top:6px;padding:8px 9px;line-height:1.55;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
+        <span style="flex:none;">💡</span><span>${mentionHint}</span>
+      </div>
       ${state.tacoOutputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">${postRows || `<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint);">宛先と文面を入力すると、ここに投稿が表示されます。</div>`}</div>` : ''}
       ${posts.length ? `<button class="btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>` : ''}
     </div>
@@ -1028,24 +1095,48 @@ function viewSettings(){
   const contacts = state.contacts.slice().sort((a,b)=>b.freq-a.freq);
   const contactList = state.contactsOpen ? `
     <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border2);border-radius:11px;background:var(--surface2);margin-bottom:11px;">
-      ${contacts.map(c => `
+      ${contacts.map(c => {
+        const editing = state.editingContactId === c.id;
+        return editing ? `
+        <div class="contact-row">
+          <span class="contact-row__ini">${esc((state.editContactName || c.name).slice(0,1))}</span>
+          <input class="field-input" data-k="edit-contact-${c.id}" style="flex:1;min-width:0;padding:7px 9px;border-color:var(--accent);background:var(--surface);font-size:13px;font-weight:600;" value="${esc(state.editContactName)}" oninput="App.setEditContactName(this.value)" onkeydown="if(event.key==='Enter')App.commitEditContact(${c.id});if(event.key==='Escape')App.cancelEditContact();" />
+          <button class="icon-btn" style="width:27px;height:27px;border-radius:8px;background:var(--accent);color:#fff;" onclick="App.commitEditContact(${c.id})" aria-label="保存">${I.check}</button>
+          <button class="icon-btn" style="width:27px;height:27px;border-radius:8px;" onclick="App.cancelEditContact()" aria-label="キャンセル">${I.close}</button>
+        </div>` : `
         <div class="contact-row">
           <span class="contact-row__ini">${esc(c.name.slice(0,1))}</span>
           <span style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.name)}</span>
+          <button class="icon-btn" style="width:26px;height:26px;border-radius:7px;" onclick="App.startEditContact(${c.id})" aria-label="編集">${I.pencil}</button>
           <button class="icon-btn" style="width:26px;height:26px;border-radius:7px;" onclick="App.removeContact(${c.id})" aria-label="削除">${I.close}</button>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>` : '';
 
   const presetTags = state.presets.map(p =>
     `<span class="tag">${esc(p)}<button class="icon-btn" style="padding:0;" onclick="App.removePreset('${esc(p).replace(/'/g,"\\'")}')">${I.closeSm}</button></span>`
   ).join('');
 
-  const tplRows = state.templates.map(t => `
+  const tplRows = state.templates.map(t => {
+    const editing = state.editingTemplateId === t.id;
+    return editing ? `
+    <div class="tpl-row" style="flex-direction:column;align-items:stretch;">
+      <div style="display:flex;gap:8px;">
+        <input class="field-input" data-k="edit-tpl-label-${t.id}" style="flex:none;width:84px;border-color:var(--accent);background:var(--surface);" value="${esc(state.editTemplateLabel)}" oninput="App.setEditTemplateLabel(this.value)" placeholder="ラベル" />
+        <input class="field-input" data-k="edit-tpl-body-${t.id}" style="border-color:var(--accent);background:var(--surface);" value="${esc(state.editTemplateBody)}" oninput="App.setEditTemplateBody(this.value)" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))App.commitEditTemplate('${t.id}');if(event.key==='Escape')App.cancelEditTemplate();" placeholder="文面" />
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" style="flex:1;padding:9px;border-radius:9px;font-size:12.5px;" onclick="App.commitEditTemplate('${t.id}')">保存</button>
+        <button class="btn-ghost" style="flex:none;padding:9px 13px;border-radius:9px;font-size:12.5px;" onclick="App.cancelEditTemplate()">キャンセル</button>
+      </div>
+    </div>` : `
     <div class="tpl-row">
       <span class="tpl-row__label">${esc(t.label)}</span>
       <span style="flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.body)}</span>
-      <button class="icon-btn" onclick="App.removeTemplate('${t.id}')">${I.close}</button>
-    </div>`).join('');
+      <button class="icon-btn" onclick="App.startEditTemplate('${t.id}')" aria-label="編集">${I.pencil}</button>
+      <button class="icon-btn" onclick="App.removeTemplate('${t.id}')" aria-label="削除">${I.close}</button>
+    </div>`;
+  }).join('');
 
   return `
   <div class="tab">
@@ -1115,7 +1206,7 @@ function viewSettings(){
         </button>${contactList}` : ''}
         <textarea class="field-input" data-k="bulk" rows="4" style="line-height:1.7;border-radius:11px;" oninput="App.setBulkText(this.value)" placeholder="1行に1人ずつ名前を貼り付け（「＠」は不要）&#10;例：&#10;メンバーA&#10;メンバーB&#10;メンバーC">${esc(state.bulkText)}</textarea>
         <button class="btn-primary" style="width:100%;margin-top:9px;padding:11px;border-radius:11px;font-size:13px;" onclick="App.bulkImport()">一括登録</button>
-        <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">改行が人の区切りです。「＠」は文面生成時に自動で付きます。登録した相手はタコスタブの宛先に表示されます。</div>
+        <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">改行が人の区切りです。「＠」は貼り付けても登録時に外します。登録した相手はタコスタブの宛先に表示されます。</div>
       </div>
     </div>
 
