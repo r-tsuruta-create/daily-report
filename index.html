@@ -22,7 +22,7 @@
   --bg:#f3f2ee; --bg2:#e9e7e1; --surface:#fff; --surface2:#faf9f6;
   --text:#21222a; --muted:#71727f; --faint:#9a9ba6;
   --border:#e7e5df; --border2:#efede9;
-  --danger:#d0463b; --danger-bg:#fbeae8; --ok:#1f9d64;
+  --danger:#d0463b; --danger-bg:#fbeae8; --ok:#1f9d64; --taco:#c48200;
   --accent:#3a6fd0;
   --shadow:0 1px 2px rgba(20,20,30,.05),0 10px 30px -18px rgba(20,20,30,.22);
 }
@@ -111,7 +111,7 @@ input[type=number]{-moz-appearance:textfield;}
 .icon{display:inline-flex;}
 
 /* ---- 日報: 案件カード ---- */
-.cat{overflow:hidden;}
+.cat{overflow:hidden; transition:transform .18s cubic-bezier(.2,.85,.25,1);}
 .cat__head{
   display:flex; align-items:center; border-bottom:1px solid var(--border2);
   background:color-mix(in srgb, var(--accent) 5%, var(--surface));
@@ -125,7 +125,9 @@ input[type=number]{-moz-appearance:textfield;}
 .icon-btn{flex:none; border:none; background:transparent; color:var(--faint); display:flex; align-items:center; justify-content:center;}
 .cat__del{width:38px; align-self:stretch;}
 
-.task{display:flex; align-items:center; border-bottom:1px solid var(--border2);}
+.task{display:flex; align-items:center; border-bottom:1px solid var(--border2); transition:transform .18s cubic-bezier(.2,.85,.25,1);}
+.dragging{transition:none!important; z-index:100; box-shadow:0 14px 30px -8px rgba(20,20,40,.30),0 4px 10px rgba(20,20,40,.16); position:relative;}
+@media (prefers-reduced-motion: reduce){.cat,.task{transition:none;}}
 .stepper{flex:none; display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden;}
 .stepper__btn{width:21px; height:30px; border:none; background:transparent; color:var(--muted); font-size:15px; font-weight:700;}
 .stepper__val{display:flex; align-items:baseline; width:42px; justify-content:center;}
@@ -209,8 +211,8 @@ input[type=number]{-moz-appearance:textfield;}
 /* =========================================================================
    テーマ定義
    ========================================================================= */
-const LIGHT = {'--bg':'#f3f2ee','--bg2':'#e9e7e1','--surface':'#ffffff','--surface2':'#faf9f6','--text':'#21222a','--muted':'#71727f','--faint':'#9a9ba6','--border':'#e7e5df','--border2':'#efede9','--danger':'#d0463b','--danger-bg':'#fbeae8','--ok':'#1f9d64','--shadow':'0 1px 2px rgba(20,20,30,.05),0 10px 30px -18px rgba(20,20,30,.22)'};
-const DARK  = {'--bg':'#15161a','--bg2':'#0e0f12','--surface':'#1d1f25','--surface2':'#24262d','--text':'#eceef3','--muted':'#9a9da8','--faint':'#6b6e79','--border':'#2c2f37','--border2':'#262931','--danger':'#f0786c','--danger-bg':'#3a2422','--ok':'#52c08f','--shadow':'0 1px 2px rgba(0,0,0,.3),0 12px 30px -16px rgba(0,0,0,.6)'};
+const LIGHT = {'--bg':'#f3f2ee','--bg2':'#e9e7e1','--surface':'#ffffff','--surface2':'#faf9f6','--text':'#21222a','--muted':'#71727f','--faint':'#9a9ba6','--border':'#e7e5df','--border2':'#efede9','--danger':'#d0463b','--danger-bg':'#fbeae8','--ok':'#1f9d64','--taco':'#c48200','--shadow':'0 1px 2px rgba(20,20,30,.05),0 10px 30px -18px rgba(20,20,30,.22)'};
+const DARK  = {'--bg':'#15161a','--bg2':'#0e0f12','--surface':'#1d1f25','--surface2':'#24262d','--text':'#eceef3','--muted':'#9a9da8','--faint':'#6b6e79','--border':'#2c2f37','--border2':'#262931','--danger':'#f0786c','--danger-bg':'#3a2422','--ok':'#52c08f','--taco':'#f0b429','--shadow':'0 1px 2px rgba(0,0,0,.3),0 12px 30px -16px rgba(0,0,0,.6)'};
 const TONES = {
   '青':{l:'#3a6fd0',d:'#6f9bf0'},
   '藍':{l:'#2098a0',d:'#4cc3cb'},
@@ -288,7 +290,6 @@ const state = {
   ]),
   presets: ['朝会・夕会等', 'MTG', '設計'],
   newPreset: '',
-  drag: null,               // {type:'cat'|'task', catId, taskId}
   editingCat: null,
 
   // タコス
@@ -298,6 +299,7 @@ const state = {
   contactsOpen: false,
   editingContactId: null,
   editContactName: '',
+  editingContactBackup: '',
   blocks: [
     { id: uid(), recipients: [], count: 1, body: '' },
   ],
@@ -310,6 +312,7 @@ const state = {
   editingTemplateId: null,
   editTemplateLabel: '',
   editTemplateBody: '',
+  editingTemplateBackup: null,
   tacoMode: 'merge',        // merge(投稿をまとめる) | split(個別で送る)
   tacoOutputOpen: true,
   accumulated: 0,           // 本日の消費（コピー時に加算）
@@ -318,6 +321,8 @@ const state = {
   toast: '',
   _toastTimer: null,
 };
+let dragSession = null;
+let resetScroll = false;
 
 /* =========================================================================
    小物ヘルパー
@@ -625,7 +630,7 @@ const findCat = (catId) => groupsOf().find(g => g.id === catId);
 
 const App = {
   /* ナビ / テーマ */
-  go(tab){ state.tab = tab; render(); },
+  go(tab){ resetScroll = true; state.tab = tab; render(); },
   setTheme(t){ state.theme = t; applyTheme(); render(); },
   setTone(k){ state.tone = k; applyTheme(); render(); },
 
@@ -650,32 +655,131 @@ const App = {
   deleteTask(catId, taskId){ const g = findCat(catId); if(g){ const i = g.tasks.findIndex(t => t.id === taskId); if(i>=0) g.tasks.splice(i,1);} render(); },
 
   /* Pointer Events 並び替え */
-  pointerStartCat(catId, e){ this.pointerStart({ type:'cat', catId }, e); },
-  pointerStartTask(catId, taskId, e){ this.pointerStart({ type:'task', catId, taskId }, e); },
-  pointerStart(payload, e){
-    if(e && e.preventDefault) e.preventDefault();
-    if(e && e.currentTarget && e.currentTarget.setPointerCapture && e.pointerId != null){
-      try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(x){}
-    }
-    state.drag = payload;
-    if(!this._pointerEnd){
-      this._pointerEnd = () => this.pointerEnd();
-      document.addEventListener('pointerup', this._pointerEnd);
-      document.addEventListener('pointercancel', this._pointerEnd);
-    }
-    render();
+  pointerStartCat(catId, e){ this.startDragCat(catId, e); },
+  pointerStartTask(catId, taskId, e){ this.startDragTask(catId, taskId, e); },
+  startDragCat(catId, e){
+    const handle = e && e.currentTarget;
+    const item = handle && handle.closest('[data-cat-id]');
+    const list = item && item.parentElement;
+    if(item && list) this.startDrag(e, item, list, { type:'cat', catId });
   },
-  pointerEnd(){
-    state.drag = null;
-    if(this._pointerEnd){
-      document.removeEventListener('pointerup', this._pointerEnd);
-      document.removeEventListener('pointercancel', this._pointerEnd);
-      this._pointerEnd = null;
-    }
-    render();
+  startDragTask(catId, taskId, e){
+    const handle = e && e.currentTarget;
+    const item = handle && handle.closest('[data-task-id]');
+    const list = item && item.parentElement;
+    if(item && list) this.startDrag(e, item, list, { type:'task', catId, taskId });
   },
-  dragEnterCat(catId){ const d = state.drag; if(!d || d.type!=='cat' || d.catId===catId) return; const arr = groupsOf(); const from = arr.findIndex(g=>g.id===d.catId), to = arr.findIndex(g=>g.id===catId); if(from<0||to<0) return; const [m] = arr.splice(from,1); arr.splice(to,0,m); render(); },
-  dragEnterTask(catId, taskId){ const d = state.drag; if(!d || d.type!=='task' || d.catId!==catId || d.taskId===taskId) return; const g = findCat(catId); if(!g) return; const from = g.tasks.findIndex(t=>t.id===d.taskId), to = g.tasks.findIndex(t=>t.id===taskId); if(from<0||to<0) return; const [m] = g.tasks.splice(from,1); g.tasks.splice(to,0,m); render(); },
+  startDrag(e, item, list, meta){
+    if(!e || !item || !list) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    if(dragSession) return;
+    const handle = e.currentTarget;
+    const kids = Array.from(list.children).filter(node => node.hasAttribute('data-item'));
+    const fromIndex = kids.indexOf(item);
+    if(fromIndex < 0) return;
+    const rects = kids.map(node => {
+      const r = node.getBoundingClientRect();
+      return { el: node, top: r.top, h: r.height, center: r.top + r.height / 2 };
+    });
+    let gap = rects.length > 1 ? rects[1].top - (rects[0].top + rects[0].h) : 0;
+    if(gap < 0) gap = 0;
+    dragSession = {
+      item, list, handle, meta, pid: e.pointerId, startY: e.clientY,
+      rects, kids, fromIndex, gap, baseCenter: rects[fromIndex].center,
+      top0: rects[0].top, targetOrder: null,
+    };
+    item.classList.add('dragging');
+    const cat = item.closest('.cat');
+    if(cat && cat !== item){
+      cat.style.overflow = 'visible';
+      cat.style.zIndex = '60';
+      dragSession.cat = cat;
+    }
+    try{ handle.setPointerCapture(e.pointerId); }catch(x){}
+    this._moveDrag = ev => this.moveDrag(ev);
+    this._endDrag = () => this.endDrag();
+    document.addEventListener('pointermove', this._moveDrag);
+    document.addEventListener('pointerup', this._endDrag);
+    document.addEventListener('pointercancel', this._endDrag);
+    e.preventDefault();
+  },
+  moveDrag(e){
+    if(!dragSession) return;
+    e.preventDefault();
+    const d = dragSession;
+    const dy = e.clientY - d.startY;
+    d.item.style.transform = 'translateY(' + dy + 'px) scale(1.03)';
+    const center = d.baseCenter + dy;
+    const others = d.rects.filter(r => r.el !== d.item);
+    let insertIdx = others.length;
+    for(let i = 0; i < others.length; i++){
+      if(center < others[i].center){ insertIdx = i; break; }
+    }
+    const newOrder = others.slice();
+    newOrder.splice(insertIdx, 0, { el: d.item, dragged: true });
+    const draggedH = d.rects[d.fromIndex].h;
+    let cursor = d.top0;
+    for(let i = 0; i < newOrder.length; i++){
+      const r = newOrder[i];
+      if(r.dragged){
+        cursor += draggedH + d.gap;
+        continue;
+      }
+      r.el.style.transform = 'translateY(' + (cursor - r.top) + 'px)';
+      cursor += r.h + d.gap;
+    }
+    d.targetOrder = newOrder;
+  },
+  endDrag(){
+    if(!dragSession) return;
+    const d = dragSession;
+    dragSession = null;
+    d.item.classList.remove('dragging');
+    d.kids.forEach(node => { node.style.transition = 'none'; });
+    if(d.targetOrder){
+      d.targetOrder.forEach(r => {
+        r.el.style.transform = '';
+        d.list.appendChild(r.el);
+      });
+    } else {
+      d.kids.forEach(node => { node.style.transform = ''; });
+    }
+    d.item.style.transform = '';
+    if(d.cat){
+      d.cat.style.overflow = '';
+      d.cat.style.zIndex = '';
+    }
+    void d.list.offsetHeight;
+    d.kids.forEach(node => { node.style.transition = ''; });
+    document.removeEventListener('pointermove', this._moveDrag);
+    document.removeEventListener('pointerup', this._endDrag);
+    document.removeEventListener('pointercancel', this._endDrag);
+    try{ d.handle.releasePointerCapture(d.pid); }catch(x){}
+    this._moveDrag = null;
+    this._endDrag = null;
+    this.applyDragOrder(d);
+  },
+  pointerEnd(){ this.endDrag(); },
+  applyDragOrder(d){
+    const meta = d.meta;
+    if(meta.type === 'cat'){
+      const ids = Array.from(d.list.querySelectorAll(':scope > [data-cat-id]')).map(el => Number(el.getAttribute('data-cat-id')));
+      const arr = groupsOf();
+      const byId = new Map(arr.map(g => [g.id, g]));
+      const ordered = ids.map(id => byId.get(id)).filter(Boolean);
+      if(ordered.length === arr.length) arr.splice(0, arr.length, ...ordered);
+    }
+    if(meta.type === 'task'){
+      const g = findCat(meta.catId);
+      if(g){
+        const ids = Array.from(d.list.querySelectorAll(':scope > [data-task-id]')).map(el => Number(el.getAttribute('data-task-id')));
+        const byId = new Map(g.tasks.map(t => [t.id, t]));
+        const ordered = ids.map(id => byId.get(id)).filter(Boolean);
+        if(ordered.length === g.tasks.length) g.tasks.splice(0, g.tasks.length, ...ordered);
+      }
+    }
+    persist();
+  },
 
   /* 出力プレビュー / コピー */
   toggleOutput(){ state.outputOpen = !state.outputOpen; render(); },
@@ -742,27 +846,35 @@ const App = {
     render();
     toast(added ? added + '人を登録しました' : '新しい相手はありませんでした');
   },
-  startEditContact(id){ const c = state.contacts.find(c => c.id === id); if(!c) return; state.editingContactId = id; state.editContactName = c.name; render(); },
+  startEditContact(id){ const c = state.contacts.find(c => c.id === id); if(!c) return; state.editingContactId = id; state.editContactName = c.name; state.editingContactBackup = c.name; render(); },
   setEditContactName(v){ state.editContactName = v; },
   commitEditContact(id){
     const c = state.contacts.find(c => c.id === id);
     if(!c) return;
-    const oldName = c.name;
+    const oldName = state.editingContactBackup || c.name;
     const newName = state.editContactName.replace(/^[＠@\s]+/,'').trim();
-    if(!newName){ toast('名前を入力してください'); return; }
+    if(!newName){
+      c.name = oldName;
+      state.editingContactId = null;
+      state.editContactName = '';
+      state.editingContactBackup = '';
+      render();
+      return;
+    }
     if(state.contacts.some(x => x.id !== id && x.name === newName)){ toast('同じ名前が登録済みです'); return; }
     c.name = newName;
     state.blocks.forEach(b => { b.recipients = b.recipients.map(r => r === oldName ? newName : r); });
     state.editingContactId = null;
     state.editContactName = '';
+    state.editingContactBackup = '';
     render();
   },
-  cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; render(); },
+  cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; state.editingContactBackup = ''; render(); },
   removeContact(id){ const c = state.contacts.find(c => c.id === id); state.contacts = state.contacts.filter(c => c.id !== id); if(c) state.blocks.forEach(b => { b.recipients = b.recipients.filter(r => r !== c.name); }); render(); },
   setTplLabel(v){ state.newTemplateLabel = v; },
   setTplBody(v){ state.newTemplateBody = v; },
   addTemplate(){ const label = state.newTemplateLabel.trim(), body = state.newTemplateBody.trim(); if(!label || !body){ toast('ラベルと文面を入力してください'); return; } state.templates.push({ id: 'tpl'+uid(), label, body }); state.newTemplateLabel=''; state.newTemplateBody=''; render(); toast('テンプレートを追加しました'); },
-  startEditTemplate(id){ const t = state.templates.find(t => t.id === id); if(!t) return; state.editingTemplateId = id; state.editTemplateLabel = t.label; state.editTemplateBody = t.body; render(); },
+  startEditTemplate(id){ const t = state.templates.find(t => t.id === id); if(!t) return; state.editingTemplateId = id; state.editTemplateLabel = t.label; state.editTemplateBody = t.body; state.editingTemplateBackup = { label: t.label, body: t.body }; render(); },
   setEditTemplateLabel(v){ state.editTemplateLabel = v; },
   setEditTemplateBody(v){ state.editTemplateBody = v; },
   commitEditTemplate(id){
@@ -770,23 +882,34 @@ const App = {
     if(!t) return;
     const label = state.editTemplateLabel.trim();
     const body = state.editTemplateBody.trim();
-    if(!label || !body){ toast('ラベルと文面を入力してください'); return; }
+    if(!label || !body){
+      const backup = state.editingTemplateBackup || { label: t.label, body: t.body };
+      t.label = backup.label;
+      t.body = backup.body;
+      state.editingTemplateId = null;
+      state.editTemplateLabel = '';
+      state.editTemplateBody = '';
+      state.editingTemplateBackup = null;
+      render();
+      return;
+    }
     t.label = label;
     t.body = body;
     state.editingTemplateId = null;
     state.editTemplateLabel = '';
     state.editTemplateBody = '';
+    state.editingTemplateBackup = null;
     render();
   },
-  cancelEditTemplate(){ state.editingTemplateId = null; state.editTemplateLabel = ''; state.editTemplateBody = ''; render(); },
+  cancelEditTemplate(){ state.editingTemplateId = null; state.editTemplateLabel = ''; state.editTemplateBody = ''; state.editingTemplateBackup = null; render(); },
   removeTemplate(id){ state.templates = state.templates.filter(t => t.id !== id); render(); },
 };
 window.App = App;
 
-const LOCAL_ONLY_ACTIONS = new Set(['go','setDay','toggleGreeting','startEditCat','stopEditCat','toggleContacts','toggleOutput','toggleTacoOutput','pointerStartCat','pointerStartTask','pointerStart','pointerEnd','startEditContact','cancelEditContact','startEditTemplate','cancelEditTemplate']);
+const LOCAL_ONLY_ACTIONS = new Set(['go','setDay','toggleGreeting','startEditCat','stopEditCat','toggleContacts','toggleOutput','toggleTacoOutput','pointerStartCat','pointerStartTask','pointerEnd','startEditContact','cancelEditContact','startEditTemplate','cancelEditTemplate']);
 const SAVE_ACTIONS = new Set([
   'setTheme','setTone','setGreeting','setCategory','deleteCategory','addCategory','addTask',
-  'setTaskName','setTaskHours','bumpHours','deleteTask','dragEnterCat','dragEnterTask',
+  'setTaskName','setTaskHours','bumpHours','deleteTask',
   'addPreset','removePreset','addBlock','removeBlock','bumpCount','setBody','pickRecipient',
   'removeRecipient','setTacoMode','setWebhook','bulkImport','removeContact','addTemplate',
   'commitEditContact','commitEditTemplate','removeTemplate','copyPost','copyAllTacos','quickCopy',
@@ -876,7 +999,7 @@ function viewReport(){
   const dayHours = fmtHours(dayHoursValue);
   const dayHoursState = Math.round(dayHoursValue * 2) === 16 ? 'just' : dayHoursValue > 8 ? 'over' : 'under';
   const dayHoursColor = dayHoursState === 'over' ? 'var(--danger)' : dayHoursState === 'under' ? 'var(--taco)' : 'var(--ok)';
-  const dayHoursSize = dayHoursState === 'just' ? '13px' : '17px';
+  const dayHoursSize = '15px';
   const dayLabel = isToday ? '退勤報告' : '朝会報告';
 
   const greetingCard = isToday ? `
@@ -899,7 +1022,6 @@ function viewReport(){
     </div>` : '';
 
   const cats = groups.map(g => {
-    const opacity = (state.drag && state.drag.type==='cat' && state.drag.catId===g.id) ? .4 : 1;
     const gHours = fmtHours(g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0));
     const nameArea = (state.editingCat === g.id) ? `
       <div class="cat__name-edit">
@@ -911,10 +1033,9 @@ function viewReport(){
       </button>`;
 
     const tasks = g.tasks.map(t => {
-      const tOpacity = (state.drag && state.drag.type==='task' && state.drag.taskId===t.id) ? .4 : 1;
       return `
-      <div class="task" style="opacity:${tOpacity};" onpointerenter="App.dragEnterTask(${g.id},${t.id})">
-        <div class="handle" onpointerdown="App.pointerStartTask(${g.id},${t.id},event)" onpointerup="App.pointerEnd()" onpointercancel="App.pointerEnd()" title="ドラッグで並び替え">${I.grip}</div>
+      <div class="task" data-item data-task-id="${t.id}">
+        <div class="handle" onpointerdown="App.pointerStartTask(${g.id},${t.id},event)" title="ドラッグで並び替え">${I.grip}</div>
         <div class="stepper" style="margin:6px 7px 6px 0;">
           <button class="stepper__btn" onclick="App.bumpHours(${g.id},${t.id},-0.5)" aria-label="-0.5h">−</button>
           <div class="stepper__val">
@@ -933,15 +1054,17 @@ function viewReport(){
     ).join('');
 
     return `
-    <div class="card cat" style="opacity:${opacity};" onpointerenter="App.dragEnterCat(${g.id})">
+    <div class="card cat" data-item data-cat-id="${g.id}">
       <div class="cat__head">
-        <div class="handle" onpointerdown="App.pointerStartCat(${g.id},event)" onpointerup="App.pointerEnd()" onpointercancel="App.pointerEnd()" title="案件ごと並び替え">${I.grip}</div>
+        <div class="handle" onpointerdown="App.pointerStartCat(${g.id},event)" title="案件ごと並び替え">${I.grip}</div>
         ${nameArea}
         <span class="cat__hours mono">${gHours}h</span>
         <button class="icon-btn cat__del" onclick="App.deleteCategory(${g.id})" aria-label="案件削除">${I.close}</button>
       </div>
       <div style="display:flex;flex-direction:column;">
+        <div data-task-list="${g.id}" style="display:flex;flex-direction:column;">
         ${tasks}
+        </div>
         <div style="padding:9px 11px 11px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           <span style="font-size:11px;color:var(--faint);margin-right:2px;">追加:</span>
           ${presetChips}
@@ -972,10 +1095,10 @@ function viewReport(){
   <div class="tab">
     <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">${dayLabel}の作業内容</div>
-      <div class="mono" style="font-size:${dayHoursSize};color:${dayHoursColor};font-weight:900;">計 ${dayHours}h</div>
+      <div class="mono" style="font-size:${dayHoursSize};color:${dayHoursColor};font-weight:700;">計 ${dayHours}h</div>
     </div>
     ${greetingCard}
-    <div style="display:flex;flex-direction:column;gap:11px;">${cats}</div>
+    <div data-cat-list="true" style="display:flex;flex-direction:column;gap:11px;">${cats}</div>
     <button class="btn-dashed" onclick="App.addCategory()">${I.plus}案件カテゴリを追加</button>
 
     <div class="card" style="padding:15px;margin-top:2px;">
@@ -1068,7 +1191,7 @@ function viewTacos(){
       </div>
       <div style="font-size:11px;color:var(--faint);margin-top:8px;padding:0 2px;line-height:1.5;">${modeHint}</div>
       <div style="display:flex;gap:6px;align-items:flex-start;font-size:10.8px;color:var(--muted);margin-top:6px;padding:8px 9px;line-height:1.55;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
-        <span style="flex:none;">💡</span><span>${mentionHint}</span>
+        <span style="flex:none;">ⓘ</span><span>${mentionHint}</span>
       </div>
       ${state.tacoOutputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">${postRows || `<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint);">宛先と文面を入力すると、ここに投稿が表示されます。</div>`}</div>` : ''}
       ${posts.length ? `<button class="btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>` : ''}
@@ -1259,6 +1382,8 @@ function render(){
   const fk = active && active.getAttribute ? active.getAttribute('data-k') : null;
   let selStart = null, selEnd = null;
   if (fk) { try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch(e){} }
+  const oldScroll = app.querySelector('.scroll');
+  const scrollTop = oldScroll ? oldScroll.scrollTop : 0;
 
   let body = '';
   if (state.tab === 'report')   body = viewReport();
@@ -1271,6 +1396,11 @@ function render(){
     `<div class="scroll">${body}</div>` +
     viewNav() +
     (state.toast ? `<div class="toast">${esc(state.toast)}</div>` : '');
+  const newScroll = app.querySelector('.scroll');
+  if (newScroll) {
+    newScroll.scrollTop = resetScroll ? 0 : scrollTop;
+  }
+  resetScroll = false;
 
   // フォーカス復元
   if (fk) {
