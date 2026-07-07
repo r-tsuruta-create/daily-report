@@ -976,9 +976,9 @@ function viewSubheader(){
         <button class="seg__btn ${isToday?'is-active':''}" onclick="App.setDay('today')">退勤報告</button>
         <button class="seg__btn ${!isToday?'is-active':''}" onclick="App.setDay('tomorrow')">朝会報告</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
+      <div data-role="report-hours-total" style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 10px;height:36px;box-sizing:border-box;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
         <span style="font-size:12px;font-weight:700;color:var(--muted);">${dayLabel}の合計時間</span>
-        <span class="mono" style="font-size:${hours.size};color:${hours.color};font-weight:700;">計 ${hours.text}h</span>
+        <span class="mono" style="font-size:${hours.size};line-height:1;color:${hours.color};font-weight:700;">計 ${hours.text}h</span>
       </div>
       <button class="btn-primary" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;font-size:13px;" onclick="App.quickCopy()">${I.copy}${quickLabel}</button>
     </div>`;

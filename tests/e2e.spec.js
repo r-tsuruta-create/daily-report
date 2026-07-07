@@ -80,14 +80,26 @@ function hoursLocator(page) {
   return page.locator('.subheader .mono').filter({ hasText: /計 \d+(\.\d+)?h/ });
 }
 
+function hoursFrameLocator(page) {
+  return page.locator('[data-role="report-hours-total"]');
+}
+
 async function readHoursStyle(page) {
-  return hoursLocator(page).evaluate((el) => {
+  const hours = hoursLocator(page);
+  await expect(hours).toBeVisible();
+  return hours.evaluate((el) => {
     const style = getComputedStyle(el);
     return {
       color: style.color,
       size: parseFloat(style.fontSize),
     };
   });
+}
+
+async function readHoursFrameBox(page) {
+  const frame = hoursFrameLocator(page);
+  await expect(frame).toBeVisible();
+  return frame.boundingBox();
 }
 
 test.describe('合計時間の固定表示と色分け', () => {
@@ -142,6 +154,25 @@ test.describe('合計時間の固定表示と色分け', () => {
       expect(red.color).not.toBe(yellow.color);
       expect(red.size).toBeGreaterThan(green.size);
       expect(yellow.size).toBeGreaterThan(green.size);
+    }
+  });
+
+  test('文字サイズが変わっても合計時間の枠サイズは変わらない', async ({ page }) => {
+    for (const tabName of ['退勤報告', '朝会報告']) {
+      await setTotalHours(page, 8.0, tabName);
+      const greenBox = await readHoursFrameBox(page);
+
+      await setTotalHours(page, 8.5, tabName);
+      const redBox = await readHoursFrameBox(page);
+
+      await setTotalHours(page, 7.5, tabName);
+      const yellowBox = await readHoursFrameBox(page);
+
+      expect(greenBox).not.toBeNull();
+      expect(redBox).not.toBeNull();
+      expect(yellowBox).not.toBeNull();
+      expect(Math.abs(redBox.height - greenBox.height)).toBeLessThan(1);
+      expect(Math.abs(yellowBox.height - greenBox.height)).toBeLessThan(1);
     }
   });
 });
