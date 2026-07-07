@@ -26,7 +26,6 @@ const requiredSnippets = [
   'commitEditContact',
   'startEditTemplate',
   'commitEditTemplate',
-  'dayHoursState',
   'Slackに貼り付けた後',
 ];
 
