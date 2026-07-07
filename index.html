@@ -87,7 +87,7 @@ input[type=number]{-moz-appearance:textfield;}
   position:absolute; left:0; right:0; top:68px; bottom:0;
   overflow-y:auto; overflow-x:hidden; padding:16px 16px calc(88px + env(safe-area-inset-bottom));
 }
-.app[data-tab="report"] .scroll{top:181px;}
+.app[data-tab="report"] .scroll{top:224px;}
 .app[data-tab="tacos"] .scroll{top:166px;}
 .app[data-tab="settings"] .scroll{top:68px;}
 .tab{display:flex; flex-direction:column; gap:14px;}
@@ -614,6 +614,15 @@ function tacoPosts(){
 function tacoDraftConsumption(){
   return state.blocks.reduce((sum, b) => sum + b.recipients.length * Math.max(0, Number(b.count || 0)), 0);
 }
+function reportHoursInfo(groups = groupsOf()){
+  const value = groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0);
+  const dayHoursState = Math.round(value * 2) === 16 ? 'just' : value > 8 ? 'over' : 'under';
+  return {
+    value,
+    text: fmtHours(value),
+    color: dayHoursState === 'over' ? 'var(--danger)' : dayHoursState === 'under' ? 'var(--taco)' : 'var(--ok)',
+  };
+}
 
 /* =========================================================================
    アクション（App.* ）— テンプレートの onclick / oninput から呼ぶ
@@ -958,11 +967,17 @@ function viewSubheader(){
   if (state.tab === 'report') {
     const isToday = state.day === 'today';
     const quickLabel = isToday ? '朝会報告の内容をコピー' : '退勤報告の内容をコピー';
+    const dayLabel = isToday ? '退勤報告' : '朝会報告';
+    const hours = reportHoursInfo();
     return `
     <div class="subheader">
       <div class="seg">
         <button class="seg__btn ${isToday?'is-active':''}" onclick="App.setDay('today')">退勤報告</button>
         <button class="seg__btn ${!isToday?'is-active':''}" onclick="App.setDay('tomorrow')">朝会報告</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);">${dayLabel}の合計時間</span>
+        <span class="mono" style="font-size:15px;color:${hours.color};font-weight:700;">計 ${hours.text}h</span>
       </div>
       <button class="btn-primary" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;font-size:13px;" onclick="App.quickCopy()">${I.copy}${quickLabel}</button>
     </div>`;
@@ -995,11 +1010,6 @@ function viewSubheader(){
 function viewReport(){
   const isToday = state.day === 'today';
   const groups = groupsOf();
-  const dayHoursValue = groups.reduce((a,g) => a + g.tasks.reduce((x,t) => x + (t.name.trim()?t.hours:0), 0), 0);
-  const dayHours = fmtHours(dayHoursValue);
-  const dayHoursState = Math.round(dayHoursValue * 2) === 16 ? 'just' : dayHoursValue > 8 ? 'over' : 'under';
-  const dayHoursColor = dayHoursState === 'over' ? 'var(--danger)' : dayHoursState === 'under' ? 'var(--taco)' : 'var(--ok)';
-  const dayHoursSize = '15px';
   const dayLabel = isToday ? '退勤報告' : '朝会報告';
 
   const greetingCard = isToday ? `
@@ -1093,10 +1103,7 @@ function viewReport(){
 
   return `
   <div class="tab">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;">${dayLabel}の作業内容</div>
-      <div class="mono" style="font-size:${dayHoursSize};color:${dayHoursColor};font-weight:700;">計 ${dayHours}h</div>
-    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;padding:0 4px;">${dayLabel}の作業内容</div>
     ${greetingCard}
     <div data-cat-list="true" style="display:flex;flex-direction:column;gap:11px;">${cats}</div>
     <button class="btn-dashed" onclick="App.addCategory()">${I.plus}案件カテゴリを追加</button>
