@@ -270,3 +270,54 @@ test.describe('タコステンプレート編集', () => {
     await expect(page.locator('.post__body')).not.toContainText('編集後のテンプレート本文');
   });
 });
+
+test.describe('タコス出力のメンション案内', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('プレビューとコピー出力で宛先名の前に＠や@が付かない', async ({ page }) => {
+    await loadWithState(page, makeTacoState({
+      templateLabel: 'お礼',
+      templateBody: 'ありがとうございました',
+    }));
+    await openTacos(page);
+
+    const expectedPost = 'テストユーザー\nありがとうございました\n🌮';
+    const preview = page.locator('.post__body');
+    await expect(preview).toHaveText(expectedPost);
+    await expect(preview).not.toContainText('＠テストユーザー');
+    await expect(preview).not.toContainText('@テストユーザー');
+
+    await page.evaluate(() => {
+      window.__copiedText = null;
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+      document.execCommand = (command) => {
+        if (command === 'copy') window.__copiedText = document.activeElement.value;
+        return true;
+      };
+    });
+    await page.locator('.post').getByRole('button', { name: 'コピー' }).click();
+
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(expectedPost);
+    const copiedText = await page.evaluate(() => window.__copiedText);
+    expect(copiedText).not.toContain('＠テストユーザー');
+    expect(copiedText).not.toContain('@テストユーザー');
+  });
+
+  test('ヒントカードが操作なしで投稿一覧の下に表示される', async ({ page }) => {
+    await loadWithState(page, makeTacoState({
+      templateLabel: 'お礼',
+      templateBody: 'ありがとうございました',
+    }));
+    await openTacos(page);
+
+    const post = page.locator('.post');
+    const hint = page.getByText('Slackに貼り付けた後、各名前の前に＠を付けると一括でメンションされます。', { exact: true });
+    await expect(hint).toBeVisible();
+
+    const postBox = await post.boundingBox();
+    const hintBox = await hint.boundingBox();
+    expect(postBox).not.toBeNull();
+    expect(hintBox).not.toBeNull();
+    expect(hintBox.y).toBeGreaterThanOrEqual(postBox.y + postBox.height);
+  });
+});

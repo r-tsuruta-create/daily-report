@@ -1178,7 +1178,7 @@ function viewTacos(){
     </div>`).join('');
 
   const modeHint = state.tacoMode === 'split' ? '宛先を1人ずつ別の投稿に分けます（連名も分割）。' : '同じ個数の宛先を1つの投稿にまとめます。';
-  const mentionHint = 'ヒント: Slackに貼り付けた後、名前の前に @ を付けると候補から選べます。';
+  const mentionHint = 'Slackに貼り付けた後、各名前の前に＠を付けると一括でメンションされます。';
 
   return `
   <div class="tab">
@@ -1198,10 +1198,10 @@ function viewTacos(){
         <button class="seg__btn ${state.tacoMode==='split'?'is-active':''}" style="font-size:12.5px;padding:9px;border-radius:8px;" onclick="App.setTacoMode('split')">個別で送る</button>
       </div>
       <div style="font-size:11px;color:var(--faint);margin-top:8px;padding:0 2px;line-height:1.5;">${modeHint}</div>
+      ${state.tacoOutputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">${postRows || `<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint);">宛先と文面を入力すると、ここに投稿が表示されます。</div>`}</div>` : ''}
       <div style="display:flex;gap:6px;align-items:flex-start;font-size:10.8px;color:var(--muted);margin-top:6px;padding:8px 9px;line-height:1.55;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
         <span style="flex:none;">ⓘ</span><span>${mentionHint}</span>
       </div>
-      ${state.tacoOutputOpen ? `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">${postRows || `<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint);">宛先と文面を入力すると、ここに投稿が表示されます。</div>`}</div>` : ''}
       ${posts.length ? `<button class="btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>` : ''}
     </div>
   </div>`;
