@@ -176,3 +176,97 @@ test.describe('合計時間の固定表示と色分け', () => {
     }
   });
 });
+
+function makeTacoState({ templateLabel, templateBody }) {
+  const data = makeState([{ hours: 8, name: 'テンプレート検証' }]);
+  data.tacoContacts = [{ id: 1, name: 'テストユーザー', freq: 0 }];
+  data.tacoTemplates = [{ id: 'tpl1', label: templateLabel, body: templateBody }];
+  data.tacoBlocks = [{
+    id: 1,
+    recipients: ['テストユーザー'],
+    count: 1,
+    body: templateBody,
+  }];
+  return data;
+}
+
+async function loadWithState(page, data) {
+  await page.goto(indexUrl);
+  await page.evaluate(({ key, storedState }) => {
+    localStorage.setItem(key, JSON.stringify(storedState));
+    localStorage.setItem('theme', 'light');
+  }, { key: STORAGE_KEY, storedState: data });
+  await page.reload();
+}
+
+async function openSettings(page) {
+  await page.getByRole('button', { name: '設定', exact: true }).click();
+}
+
+async function openTacos(page) {
+  await page.locator('.nav__btn').filter({ hasText: 'タコス' }).click();
+}
+
+function templateSection(page) {
+  return page.getByText('タコス テンプレート', { exact: true }).locator('..');
+}
+
+test.describe('タコステンプレート編集', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('テンプレ編集がプリフィルされる', async ({ page }) => {
+    await loadWithState(page, makeTacoState({
+      templateLabel: 'お礼',
+      templateBody: 'レビューありがとうございました',
+    }));
+    await openSettings(page);
+
+    const row = templateSection(page).locator('.tpl-row').filter({ hasText: 'お礼' });
+    await row.getByRole('button', { name: '編集' }).click();
+
+    await expect(page.locator('[data-k="edit-tpl-label-tpl1"]')).toHaveValue('お礼');
+    await expect(page.locator('[data-k="edit-tpl-body-tpl1"]')).toHaveValue('レビューありがとうございました');
+  });
+
+  test('テンプレ編集が反映される', async ({ page }) => {
+    await loadWithState(page, makeTacoState({
+      templateLabel: 'お礼',
+      templateBody: 'レビューありがとうございました',
+    }));
+    await openSettings(page);
+
+    const row = templateSection(page).locator('.tpl-row').filter({ hasText: 'お礼' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-tpl-label-tpl1"]').fill('深い感謝');
+    await page.locator('[data-k="edit-tpl-body-tpl1"]').fill('丁寧なレビューをありがとうございました');
+    await templateSection(page).getByRole('button', { name: '保存' }).click();
+
+    await expect(templateSection(page).getByText('深い感謝', { exact: true })).toBeVisible();
+    await expect(templateSection(page).getByText('丁寧なレビューをありがとうございました', { exact: true })).toBeVisible();
+
+    await page.reload();
+    await openSettings(page);
+    await expect(templateSection(page).getByText('深い感謝', { exact: true })).toBeVisible();
+    await expect(templateSection(page).getByText('丁寧なレビューをありがとうございました', { exact: true })).toBeVisible();
+  });
+
+  test('テンプレ編集は作成済み投稿に波及しない', async ({ page }) => {
+    await loadWithState(page, makeTacoState({
+      templateLabel: 'お礼',
+      templateBody: '作成済みの投稿本文',
+    }));
+
+    await openTacos(page);
+    await expect(page.locator('.post__body')).toContainText('作成済みの投稿本文');
+
+    await openSettings(page);
+    const row = templateSection(page).locator('.tpl-row').filter({ hasText: 'お礼' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-tpl-body-tpl1"]').fill('編集後のテンプレート本文');
+    await templateSection(page).getByRole('button', { name: '保存' }).click();
+
+    await openTacos(page);
+    await expect(page.locator('.post__body')).toContainText('作成済みの投稿本文');
+    await expect(page.locator('.post__body')).not.toContainText('編集後のテンプレート本文');
+  });
+});
