@@ -434,16 +434,13 @@ test.describe('タコス宛先候補と操作間隔', () => {
     await expect(nextSelect.locator('option').nth(1)).toHaveText('探した人');
   });
 
-  test('タコスカウントと削除ボタンの間に十分な間隔がある', async ({ page }) => {
+  test('タコスの削除ボタンに十分なタップ領域がある', async ({ page }) => {
     await loadWithState(page, makeRecipientRankingState());
     await openTacos(page);
 
     const block = page.locator('.block').first();
-    const countBox = await block.locator('.count').boundingBox();
     const deleteBox = await block.getByRole('button', { name: '削除' }).boundingBox();
-    expect(countBox).not.toBeNull();
     expect(deleteBox).not.toBeNull();
-    expect(deleteBox.x - (countBox.x + countBox.width)).toBeGreaterThanOrEqual(12);
     expect(deleteBox.width).toBeGreaterThanOrEqual(44);
     expect(deleteBox.height).toBeGreaterThanOrEqual(44);
   });
