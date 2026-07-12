@@ -444,7 +444,7 @@ test.describe('タコス宛先候補と操作間隔', () => {
     expect(countBox).not.toBeNull();
     expect(deleteBox).not.toBeNull();
     expect(deleteBox.x - (countBox.x + countBox.width)).toBeGreaterThanOrEqual(12);
-    expect(deleteBox.width).toBeGreaterThanOrEqual(32);
-    expect(deleteBox.height).toBeGreaterThanOrEqual(32);
+    expect(deleteBox.width).toBeGreaterThanOrEqual(44);
+    expect(deleteBox.height).toBeGreaterThanOrEqual(44);
   });
 });
