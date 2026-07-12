@@ -834,7 +834,15 @@ const App = {
   removeBlock(id){ state.blocks = state.blocks.filter(b => b.id !== id); render(); },
   bumpCount(id, d){ const b = state.blocks.find(b => b.id === id); if(b) b.count = Math.max(1, Math.min(9, b.count + d)); render(); },
   setBody(id, v, shouldRender){ const b = state.blocks.find(b => b.id === id); if(b) b.body = v; if(shouldRender) render(); },
-  pickRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b && name && !b.recipients.includes(name)) b.recipients.push(name); render(); },
+  pickRecipient(id, name){
+    const b = state.blocks.find(b => b.id === id);
+    if(b && name && !b.recipients.includes(name)){
+      b.recipients.push(name);
+      const contact = state.contacts.find(c => c.name === name);
+      if(contact) contact.freq = Math.max(0, Number(contact.freq || 0)) + 1;
+    }
+    render();
+  },
   removeRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b) b.recipients = b.recipients.filter(r => r !== name); render(); },
 
   /* タコス: 出力 */
@@ -1140,13 +1148,13 @@ function viewTacos(){
         <div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-top:3px;">
           ${recipients || `<span style="font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 0;">宛先を選択してください</span>`}
         </div>
-        <div style="flex:none;display:flex;align-items:center;gap:8px;">
+        <div style="flex:none;display:flex;align-items:center;gap:14px;">
           <div class="count">
             <button class="count__btn" onclick="App.bumpCount(${b.id},-1)">−</button>
             <div class="count__val mono">${b.count}<span style="font-size:10px;">🌮</span></div>
             <button class="count__btn" onclick="App.bumpCount(${b.id},1)">+</button>
           </div>
-          <button class="icon-btn" style="padding:4px;" onclick="App.removeBlock(${b.id})" aria-label="削除">${I.close}</button>
+          <button class="icon-btn" style="width:32px;height:32px;padding:4px;border-radius:8px;" onclick="App.removeBlock(${b.id})" aria-label="削除">${I.close}</button>
         </div>
       </div>
       <div class="select-wrap">

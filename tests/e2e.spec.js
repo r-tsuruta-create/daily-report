@@ -398,3 +398,53 @@ test.describe('タコス送信相手の編集', () => {
     await expect(contactSection(page).locator('.contact-row').filter({ hasText: '同名候補' })).toHaveCount(2);
   });
 });
+
+function makeRecipientRankingState() {
+  const data = makeTacoState({
+    templateLabel: 'お礼',
+    templateBody: 'ありがとうございました',
+  });
+  data.tacoContacts = [
+    { id: 1, name: '最初の人', freq: 0 },
+    { id: 2, name: '次の人', freq: 0 },
+    { id: 3, name: '探した人', freq: 0 },
+  ];
+  data.tacoBlocks = [{ id: 1, recipients: [], count: 1, body: '' }];
+  return data;
+}
+
+test.describe('タコス宛先候補と操作間隔', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('一度選んだ人が次回から候補の上位に表示される', async ({ page }) => {
+    await loadWithState(page, makeRecipientRankingState());
+    await openTacos(page);
+
+    const firstSelect = page.locator('.block').first().locator('select');
+    await expect(firstSelect.locator('option').nth(1)).toHaveText('最初の人');
+    await firstSelect.selectOption({ label: '探した人' });
+    await page.getByRole('button', { name: '宛先＋文面ブロックを追加' }).click();
+
+    let nextSelect = page.locator('.block').nth(1).locator('select');
+    await expect(nextSelect.locator('option').nth(1)).toHaveText('探した人');
+
+    await page.reload();
+    await openTacos(page);
+    nextSelect = page.locator('.block').nth(1).locator('select');
+    await expect(nextSelect.locator('option').nth(1)).toHaveText('探した人');
+  });
+
+  test('タコスカウントと削除ボタンの間に十分な間隔がある', async ({ page }) => {
+    await loadWithState(page, makeRecipientRankingState());
+    await openTacos(page);
+
+    const block = page.locator('.block').first();
+    const countBox = await block.locator('.count').boundingBox();
+    const deleteBox = await block.getByRole('button', { name: '削除' }).boundingBox();
+    expect(countBox).not.toBeNull();
+    expect(deleteBox).not.toBeNull();
+    expect(deleteBox.x - (countBox.x + countBox.width)).toBeGreaterThanOrEqual(12);
+    expect(deleteBox.width).toBeGreaterThanOrEqual(32);
+    expect(deleteBox.height).toBeGreaterThanOrEqual(32);
+  });
+});
