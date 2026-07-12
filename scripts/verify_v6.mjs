@@ -100,7 +100,8 @@ App.startEditContact(1);
 App.setEditContactName('Alice New');
 App.commitEditContact(1);
 assert(state.contacts.find(c => c.id === 1).name === 'Alice New', 'contact edit did not update contact name');
-assert(state.blocks[0].recipients.includes('Alice New'), 'contact edit did not update selected recipients');
+assert(state.blocks[0].recipients.includes('Alice'), 'contact edit should keep the existing selected recipient unchanged');
+assert(!state.blocks[0].recipients.includes('Alice New'), 'contact edit should not propagate to selected recipients');
 
 App.startEditTemplate('tpl1');
 App.setEditTemplateLabel('Great');

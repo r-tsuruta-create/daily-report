@@ -321,3 +321,80 @@ test.describe('タコス出力のメンション案内', () => {
     expect(hintBox.y).toBeGreaterThanOrEqual(postBox.y + postBox.height);
   });
 });
+
+function makeContactState() {
+  const data = makeTacoState({
+    templateLabel: 'お礼',
+    templateBody: 'ありがとうございました',
+  });
+  data.tacoContacts = [
+    { id: 1, name: '編集前の名前', freq: 2 },
+    { id: 2, name: '同名候補', freq: 1 },
+  ];
+  data.tacoBlocks = [{
+    id: 1,
+    recipients: ['編集前の名前'],
+    count: 1,
+    body: 'ありがとうございました',
+  }];
+  return data;
+}
+
+function contactSection(page) {
+  return page.getByText('タコス送信相手', { exact: true }).locator('..');
+}
+
+async function openContactList(page) {
+  await contactSection(page).getByRole('button', { name: /登録済み 2名/ }).click();
+}
+
+test.describe('タコス送信相手の編集', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('名前編集は一覧と再読み込み後に反映され作成中の宛先には波及しない', async ({ page }) => {
+    await loadWithState(page, makeContactState());
+    await openSettings(page);
+    await openContactList(page);
+
+    const row = contactSection(page).locator('.contact-row').filter({ hasText: '編集前の名前' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-contact-1"]').fill('編集後の名前');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+    await expect(contactSection(page).getByText('編集後の名前', { exact: true })).toBeVisible();
+
+    await page.reload();
+    await openSettings(page);
+    await openContactList(page);
+    await expect(contactSection(page).getByText('編集後の名前', { exact: true })).toBeVisible();
+
+    await openTacos(page);
+    const preview = page.locator('.post__body');
+    await expect(preview).toContainText('編集前の名前');
+    await expect(preview).not.toContainText('編集後の名前');
+  });
+
+  test('空名はエラーで元の名前を維持し同名への変更は保存できる', async ({ page }) => {
+    await loadWithState(page, makeContactState());
+    await openSettings(page);
+    await openContactList(page);
+
+    let row = contactSection(page).locator('.contact-row').filter({ hasText: '編集前の名前' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-contact-1"]').fill('   ');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+
+    await expect(page.locator('.toast')).toHaveText('名前を入力してください');
+    await expect(contactSection(page).getByText('編集前の名前', { exact: true })).toBeVisible();
+
+    row = contactSection(page).locator('.contact-row').filter({ hasText: '編集前の名前' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-contact-1"]').fill('同名候補');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+    await expect(contactSection(page).locator('.contact-row').filter({ hasText: '同名候補' })).toHaveCount(2);
+
+    await page.reload();
+    await openSettings(page);
+    await openContactList(page);
+    await expect(contactSection(page).locator('.contact-row').filter({ hasText: '同名候補' })).toHaveCount(2);
+  });
+});

@@ -868,12 +868,10 @@ const App = {
       state.editingContactId = null;
       state.editContactName = '';
       state.editingContactBackup = '';
-      render();
+      toast('名前を入力してください');
       return;
     }
-    if(state.contacts.some(x => x.id !== id && x.name === newName)){ toast('同じ名前が登録済みです'); return; }
     c.name = newName;
-    state.blocks.forEach(b => { b.recipients = b.recipients.map(r => r === oldName ? newName : r); });
     state.editingContactId = null;
     state.editContactName = '';
     state.editingContactBackup = '';
