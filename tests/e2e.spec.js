@@ -328,8 +328,8 @@ function makeContactState() {
     templateBody: 'ありがとうございました',
   });
   data.tacoContacts = [
-    { id: 1, name: '編集前の名前', freq: 2 },
-    { id: 2, name: '同名候補', freq: 1 },
+    { id: 1, name: '編集前の名前', memberId: 'U000TEST1', freq: 2 },
+    { id: 2, name: '同名候補', memberId: 'U000TEST2', freq: 1 },
   ];
   data.tacoBlocks = [{
     id: 1,
@@ -405,9 +405,9 @@ function makeRecipientRankingState() {
     templateBody: 'ありがとうございました',
   });
   data.tacoContacts = [
-    { id: 1, name: '最初の人', freq: 0 },
-    { id: 2, name: '次の人', freq: 0 },
-    { id: 3, name: '探した人', freq: 0 },
+    { id: 1, name: '最初の人', memberId: 'U000TEST1', freq: 0 },
+    { id: 2, name: '次の人', memberId: 'U000TEST2', freq: 0 },
+    { id: 3, name: '探した人', memberId: 'U000TEST3', freq: 0 },
   ];
   data.tacoBlocks = [{ id: 1, recipients: [], count: 1, body: '' }];
   return data;
@@ -586,5 +586,107 @@ test.describe('タコス メンバーIDのデータ移行', () => {
     expect(storedRecipients).toEqual([{ name: '選択ユーザー', memberId: 'U000TEST' }]);
     await expect(page.locator('.block').first().locator('.rcpt')).toContainText('選択ユーザー');
     await expect(page.locator('.post__body')).toHaveText('選択ユーザー\n選択後の本文\n🌮');
+  });
+});
+
+function makeMemberIdUiState(contacts) {
+  const data = makeRecipientRankingState();
+  data.tacoContacts = contacts;
+  data.tacoBlocks = [{ id: 980, recipients: [], count: 1, body: '登録UI確認' }];
+  return data;
+}
+
+async function openMemberIdContactList(page, count) {
+  await contactSection(page).getByRole('button', { name: new RegExp(`登録済み ${count}名`) }).click();
+}
+
+test.describe('タコス メンバーIDの登録UI', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('個別編集は名前とメンバーIDの両方が必須', async ({ page }) => {
+    await loadWithState(page, makeMemberIdUiState([
+      { id: 1, name: '編集対象', memberId: 'U000TEST1', freq: 0 },
+    ]));
+    await openSettings(page);
+    await openMemberIdContactList(page, 1);
+
+    let row = contactSection(page).locator('.contact-row').filter({ hasText: '編集対象' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-contact-1"]').fill('');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+    await expect(page.locator('.toast')).toHaveText('名前を入力してください');
+    await expect(contactSection(page).getByText('編集対象', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('U000TEST1', { exact: true })).toBeVisible();
+
+    row = contactSection(page).locator('.contact-row').filter({ hasText: '編集対象' });
+    await row.getByRole('button', { name: '編集' }).click();
+    await page.locator('[data-k="edit-contact-member-1"]').fill('');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+    await expect(page.locator('.toast')).toHaveText('メンバーIDを入力してください');
+    await expect(contactSection(page).getByText('編集対象', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('U000TEST1', { exact: true })).toBeVisible();
+  });
+
+  test('一括登録は名前一致1件のメンバーIDを更新する', async ({ page }) => {
+    await loadWithState(page, makeMemberIdUiState([
+      { id: 1, name: '更新対象', memberId: 'U000TESTOLD', freq: 0 },
+    ]));
+    await openSettings(page);
+
+    await page.locator('[data-k="bulk"]').fill('更新対象,U000TESTNEW');
+    await page.getByRole('button', { name: '一括登録' }).click();
+    await expect(page.locator('.toast')).toHaveText('追加0・更新1・スキップ0');
+    await openMemberIdContactList(page, 1);
+    await expect(contactSection(page).getByText('U000TESTNEW', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('U000TESTOLD', { exact: true })).toHaveCount(0);
+  });
+
+  test('同名複数はID一致だけ更新扱いにし判別不能行をスキップする', async ({ page }) => {
+    await loadWithState(page, makeMemberIdUiState([
+      { id: 1, name: '同名対象', memberId: 'U000TEST1', freq: 0 },
+      { id: 2, name: '同名対象', memberId: 'U000TEST2', freq: 0 },
+    ]));
+    await openSettings(page);
+
+    await page.locator('[data-k="bulk"]').fill('同名対象,U000TEST2\n同名対象,U000TESTOTHER');
+    await page.getByRole('button', { name: '一括登録' }).click();
+    await expect(page.locator('.toast')).toContainText('追加0・更新1・スキップ1');
+    await expect(page.locator('.toast')).toContainText('同名重複のため手動で確認 1件');
+    await openMemberIdContactList(page, 2);
+    await expect(contactSection(page).getByText('U000TEST1', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('U000TEST2', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('U000TESTOTHER', { exact: true })).toHaveCount(0);
+  });
+
+  test('メンバーID未登録者は設定一覧に残るが宛先候補には出ない', async ({ page }) => {
+    await loadWithState(page, makeMemberIdUiState([
+      { id: 1, name: 'ID登録済み', memberId: 'U000TEST1', freq: 0 },
+      { id: 2, name: 'ID未登録', memberId: '', freq: 0 },
+    ]));
+    await openTacos(page);
+
+    const select = page.locator('.block').first().locator('select');
+    await expect(select.locator('option').filter({ hasText: 'ID登録済み' })).toHaveCount(1);
+    await expect(select.locator('option').filter({ hasText: 'ID未登録' })).toHaveCount(0);
+
+    await openSettings(page);
+    await openMemberIdContactList(page, 2);
+    const unregisteredRow = contactSection(page).locator('.contact-row').filter({ hasText: 'ID未登録' });
+    await expect(unregisteredRow).toBeVisible();
+    await expect(unregisteredRow.getByText('メンバーID未登録', { exact: true })).toBeVisible();
+  });
+
+  test('一括登録リストにない既存連絡先は削除されない', async ({ page }) => {
+    await loadWithState(page, makeMemberIdUiState([
+      { id: 1, name: '残す既存連絡先', memberId: 'U000TEST1', freq: 0 },
+    ]));
+    await openSettings(page);
+
+    await page.locator('[data-k="bulk"]').fill('新規連絡先,U000TEST2');
+    await page.getByRole('button', { name: '一括登録' }).click();
+    await expect(page.locator('.toast')).toHaveText('追加1・更新0・スキップ0');
+    await openMemberIdContactList(page, 2);
+    await expect(contactSection(page).getByText('残す既存連絡先', { exact: true })).toBeVisible();
+    await expect(contactSection(page).getByText('新規連絡先', { exact: true })).toBeVisible();
   });
 });

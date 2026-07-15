@@ -79,8 +79,8 @@ vm.runInNewContext(`${appScript}\nthis.__test = { state, App, tacoPosts, tacoDra
 const { state, App, tacoPosts, tacoDraftConsumption } = sandbox.__test;
 
 state.contacts = [
-  { id: 1, name: 'Alice', freq: 0 },
-  { id: 2, name: 'Bob', freq: 0 },
+  { id: 1, name: 'Alice', memberId: 'U000TEST1', freq: 0 },
+  { id: 2, name: 'Bob', memberId: 'U000TEST2', freq: 0 },
 ];
 state.templates = [{ id: 'tpl1', label: 'Thanks', body: 'Thanks!' }];
 state.blocks = [{ id: 101, recipients: ['Alice', 'Bob'], count: 2, body: 'Nice work' }];

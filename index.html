@@ -299,7 +299,8 @@ const state = {
   contactsOpen: false,
   editingContactId: null,
   editContactName: '',
-  editingContactBackup: '',
+  editContactMemberId: '',
+  editingContactBackup: null,
   blocks: [
     { id: uid(), recipients: [], count: 1, body: '' },
   ],
@@ -898,36 +899,71 @@ const App = {
   toggleContacts(){ state.contactsOpen = !state.contactsOpen; render(); },
   setBulkText(v){ state.bulkText = v; },
   bulkImport(){
-    const names = state.bulkText.split('\n').map(n => n.replace(/^[＠@\s]+/,'').trim()).filter(Boolean);
-    if(!names.length){ toast('名前を貼り付けてください'); return; }
-    const existing = new Set(state.contacts.map(c => c.name)); let added = 0;
-    names.forEach(n => { if(!existing.has(n)){ existing.add(n); state.contacts.push({ id: state.nextContactId++, name: n, memberId: '', freq: 0 }); added++; } });
+    const lines = state.bulkText.split('\n').map(line => line.trim()).filter(Boolean);
+    if(!lines.length){ toast('名前とメンバーIDを貼り付けてください'); return; }
+    let added = 0, updated = 0, skipped = 0, duplicateSkipped = 0, invalidSkipped = 0;
+    lines.forEach(line => {
+      const comma = line.indexOf(',');
+      const name = (comma >= 0 ? line.slice(0, comma) : line).replace(/^[＠@\s]+/,'').trim();
+      const memberId = comma >= 0 ? line.slice(comma + 1).trim() : '';
+      if(!name || !memberId){ skipped++; invalidSkipped++; return; }
+      const matches = state.contacts.filter(c => c.name === name);
+      if(!matches.length){
+        state.contacts.push({ id: state.nextContactId++, name, memberId, freq: 0 });
+        added++;
+        return;
+      }
+      if(matches.length === 1){
+        matches[0].memberId = memberId;
+        updated++;
+        return;
+      }
+      const exact = matches.find(c => String(c.memberId || '').trim() === memberId);
+      if(exact){
+        exact.memberId = memberId;
+        updated++;
+      } else {
+        skipped++;
+        duplicateSkipped++;
+      }
+    });
     state.bulkText = '';
     render();
-    toast(added ? added + '人を登録しました' : '新しい相手はありませんでした');
+    const notes = [];
+    if(duplicateSkipped) notes.push('同名重複のため手動で確認 ' + duplicateSkipped + '件');
+    if(invalidSkipped) notes.push('入力不足 ' + invalidSkipped + '件');
+    toast('追加' + added + '・更新' + updated + '・スキップ' + skipped + (notes.length ? '（' + notes.join('、') + '）' : ''));
   },
-  startEditContact(id){ const c = state.contacts.find(c => c.id === id); if(!c) return; state.editingContactId = id; state.editContactName = c.name; state.editingContactBackup = c.name; render(); },
+  startEditContact(id){ const c = state.contacts.find(c => c.id === id); if(!c) return; state.editingContactId = id; state.editContactName = c.name; state.editContactMemberId = String(c.memberId || ''); state.editingContactBackup = { name: c.name, memberId: String(c.memberId || '') }; render(); },
   setEditContactName(v){ state.editContactName = v; },
+  setEditContactMemberId(v){ state.editContactMemberId = v; },
   commitEditContact(id){
     const c = state.contacts.find(c => c.id === id);
     if(!c) return;
-    const oldName = state.editingContactBackup || c.name;
+    const backup = state.editingContactBackup || { name: c.name, memberId: String(c.memberId || '') };
     const newName = state.editContactName.replace(/^[＠@\s]+/,'').trim();
-    if(!newName){
-      c.name = oldName;
+    const newMemberId = state.editContactMemberId.trim();
+    if(!newName || !newMemberId){
+      c.name = backup.name;
+      c.memberId = backup.memberId;
       state.editingContactId = null;
       state.editContactName = '';
-      state.editingContactBackup = '';
-      toast('名前を入力してください');
+      state.editContactMemberId = '';
+      state.editingContactBackup = null;
+      if(!newName && !newMemberId) toast('名前とメンバーIDを入力してください');
+      else if(!newName) toast('名前を入力してください');
+      else toast('メンバーIDを入力してください');
       return;
     }
     c.name = newName;
+    c.memberId = newMemberId;
     state.editingContactId = null;
     state.editContactName = '';
-    state.editingContactBackup = '';
+    state.editContactMemberId = '';
+    state.editingContactBackup = null;
     render();
   },
-  cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; state.editingContactBackup = ''; render(); },
+  cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; state.editContactMemberId = ''; state.editingContactBackup = null; render(); },
   removeContact(id){ const c = state.contacts.find(c => c.id === id); state.contacts = state.contacts.filter(c => c.id !== id); if(c) state.blocks.forEach(b => { b.recipients = b.recipients.filter(r => recipientName(r) !== c.name || recipientMemberId(r) !== String(c.memberId || '')); }); render(); },
   setTplLabel(v){ state.newTemplateLabel = v; },
   setTplBody(v){ state.newTemplateBody = v; },
@@ -1178,6 +1214,7 @@ function viewTacos(){
       `<span class="rcpt">${esc(recipientName(r))}<button class="icon-btn" style="color:var(--accent);opacity:.7;padding:0;" onclick="App.removeRecipient(${b.id},${recipientIndex})" aria-label="外す">${I.closeSm}</button></span>`
     ).join('');
     const options = state.contacts.slice().sort((a,c)=>c.freq-a.freq)
+      .filter(c => String(c.memberId || '').trim())
       .filter(c => !b.recipients.some(r => recipientName(r) === c.name && recipientMemberId(r) === String(c.memberId || '')))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     const tplChips = state.templates.map(t => {
@@ -1279,13 +1316,19 @@ function viewSettings(){
         return editing ? `
         <div class="contact-row">
           <span class="contact-row__ini">${esc((state.editContactName || c.name).slice(0,1))}</span>
-          <input class="field-input" data-k="edit-contact-${c.id}" style="flex:1;min-width:0;padding:7px 9px;border-color:var(--accent);background:var(--surface);font-size:13px;font-weight:600;" value="${esc(state.editContactName)}" oninput="App.setEditContactName(this.value)" onkeydown="if(event.key==='Enter')App.commitEditContact(${c.id});if(event.key==='Escape')App.cancelEditContact();" />
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+            <input class="field-input" data-k="edit-contact-${c.id}" style="width:100%;padding:7px 9px;border-color:var(--accent);background:var(--surface);font-size:13px;font-weight:600;" value="${esc(state.editContactName)}" oninput="App.setEditContactName(this.value)" onkeydown="if(event.key==='Enter')App.commitEditContact(${c.id});if(event.key==='Escape')App.cancelEditContact();" placeholder="名前" />
+            <input class="field-input mono" data-k="edit-contact-member-${c.id}" style="width:100%;padding:7px 9px;border-color:var(--accent);background:var(--surface);font-size:12px;" value="${esc(state.editContactMemberId)}" oninput="App.setEditContactMemberId(this.value)" onkeydown="if(event.key==='Enter')App.commitEditContact(${c.id});if(event.key==='Escape')App.cancelEditContact();" placeholder="メンバーID" />
+          </div>
           <button class="icon-btn" style="width:27px;height:27px;border-radius:8px;background:var(--accent);color:#fff;" onclick="App.commitEditContact(${c.id})" aria-label="保存">${I.check}</button>
           <button class="icon-btn" style="width:27px;height:27px;border-radius:8px;" onclick="App.cancelEditContact()" aria-label="キャンセル">${I.close}</button>
         </div>` : `
         <div class="contact-row">
           <span class="contact-row__ini">${esc(c.name.slice(0,1))}</span>
-          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.name)}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.name)}</div>
+            ${c.memberId ? `<div class="mono" style="margin-top:2px;font-size:10.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.memberId)}</div>` : `<div style="margin-top:2px;font-size:10.5px;font-weight:700;color:var(--danger);">メンバーID未登録</div>`}
+          </div>
           <button class="icon-btn" style="width:26px;height:26px;border-radius:7px;" onclick="App.startEditContact(${c.id})" aria-label="編集">${I.pencil}</button>
           <button class="icon-btn" style="width:26px;height:26px;border-radius:7px;" onclick="App.removeContact(${c.id})" aria-label="削除">${I.close}</button>
         </div>`;
@@ -1383,9 +1426,9 @@ function viewSettings(){
             <span class="chev" style="transform:rotate(${state.contactsOpen?180:0}deg);">${I.chev}</span>
           </span>
         </button>${contactList}` : ''}
-        <textarea class="field-input" data-k="bulk" rows="4" style="line-height:1.7;border-radius:11px;" oninput="App.setBulkText(this.value)" placeholder="1行に1人ずつ名前を貼り付け（「＠」は不要）&#10;例：&#10;メンバーA&#10;メンバーB&#10;メンバーC">${esc(state.bulkText)}</textarea>
+        <textarea class="field-input" data-k="bulk" rows="4" style="line-height:1.7;border-radius:11px;" oninput="App.setBulkText(this.value)" placeholder="1行に1人ずつ 名前,メンバーID の形式で入力&#10;例：&#10;メンバーA,U000TEST1&#10;メンバーB,U000TEST2">${esc(state.bulkText)}</textarea>
         <button class="btn-primary" style="width:100%;margin-top:9px;padding:11px;border-radius:11px;font-size:13px;" onclick="App.bulkImport()">一括登録</button>
-        <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">改行が人の区切りです。「＠」は貼り付けても登録時に外します。登録した相手はタコスタブの宛先に表示されます。</div>
+        <div style="font-size:10.5px;color:var(--faint);margin-top:9px;line-height:1.55;">カンマで名前とメンバーIDを区切り、1行に1人ずつ入力します。名前とIDの両方が必要です。</div>
       </div>
     </div>
 
