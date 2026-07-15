@@ -532,3 +532,59 @@ test.describe('タコスブロックIDの復元と操作', () => {
     await expect(blocks.nth(1).locator('.body-input')).toHaveValue('残す3件目');
   });
 });
+
+function makeLegacyRecipientState() {
+  const data = makeRecipientRankingState();
+  data.tacoContacts = [{ id: 1, name: '旧形式ユーザー', freq: 0 }];
+  data.tacoBlocks = [{
+    id: 950,
+    recipients: ['旧形式ユーザー'],
+    count: 2,
+    body: '従来どおりの本文',
+  }];
+  return data;
+}
+
+test.describe('タコス メンバーIDのデータ移行', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('旧形式の連絡先と宛先は新形式へ変換され保存される', async ({ page }) => {
+    await loadWithState(page, makeLegacyRecipientState());
+
+    const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), STORAGE_KEY);
+    expect(stored.tacoContacts[0]).toEqual({ id: 1, name: '旧形式ユーザー', memberId: '', freq: 0 });
+    expect(stored.tacoBlocks[0].recipients).toEqual([{ name: '旧形式ユーザー', memberId: '' }]);
+
+    await page.reload();
+    const reloaded = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), STORAGE_KEY);
+    expect(reloaded.tacoContacts[0]).toEqual({ id: 1, name: '旧形式ユーザー', memberId: '', freq: 0 });
+    expect(reloaded.tacoBlocks[0].recipients).toEqual([{ name: '旧形式ユーザー', memberId: '' }]);
+  });
+
+  test('旧形式から移行しても宛先と投稿本文の表示は変わらない', async ({ page }) => {
+    await loadWithState(page, makeLegacyRecipientState());
+    await openTacos(page);
+
+    await expect(page.locator('.block').first().locator('.rcpt')).toContainText('旧形式ユーザー');
+    await expect(page.locator('.post__body')).toHaveText('旧形式ユーザー\n従来どおりの本文\n🌮🌮');
+  });
+
+  test('選択時の名前とメンバーIDは保存されリロード後も維持される', async ({ page }) => {
+    const data = makeRecipientRankingState();
+    data.tacoContacts = [{ id: 1, name: '選択ユーザー', memberId: 'U000TEST', freq: 0 }];
+    data.tacoBlocks = [{ id: 951, recipients: [], count: 1, body: '選択後の本文' }];
+    await loadWithState(page, data);
+    await openTacos(page);
+
+    await page.locator('.block').first().locator('select').selectOption({ label: '選択ユーザー' });
+    let storedRecipients = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).tacoBlocks[0].recipients, STORAGE_KEY);
+    expect(storedRecipients).toEqual([{ name: '選択ユーザー', memberId: 'U000TEST' }]);
+
+    await page.reload();
+    await openTacos(page);
+    storedRecipients = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).tacoBlocks[0].recipients, STORAGE_KEY);
+    expect(storedRecipients).toEqual([{ name: '選択ユーザー', memberId: 'U000TEST' }]);
+    await expect(page.locator('.block').first().locator('.rcpt')).toContainText('選択ユーザー');
+    await expect(page.locator('.post__body')).toHaveText('選択ユーザー\n選択後の本文\n🌮');
+  });
+});

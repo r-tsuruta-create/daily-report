@@ -397,17 +397,23 @@ function loadLocal(){
 function applyStoredData(data){
   if (!data || typeof data !== 'object') return;
   let repairedBlockIds = false;
+  let migratedContactMemberIds = false;
+  let migratedRecipients = false;
   const work = data.reportWork || {};
   if (typeof work.greeting === 'string') state.greeting = work.greeting;
   if (Array.isArray(work.today)) state.today = normalizeGroups(work.today);
   if (Array.isArray(work.tomorrow)) state.tomorrow = normalizeGroups(work.tomorrow);
   if (Array.isArray(data.reportPresets)) state.presets = data.reportPresets.map(String).filter(Boolean);
   if (Array.isArray(data.tacoContacts)) {
-    state.contacts = data.tacoContacts.map(c => ({
-      id: Number(c.id) || uid(),
-      name: String(c.name || '').trim(),
-      freq: Math.max(0, Number(c.freq || c.sendCount || 0)),
-    })).filter(c => c.name);
+    state.contacts = data.tacoContacts.map(c => {
+      if (!Object.prototype.hasOwnProperty.call(c, 'memberId')) migratedContactMemberIds = true;
+      return {
+        id: Number(c.id) || uid(),
+        name: String(c.name || '').trim(),
+        memberId: String(c.memberId || '').trim(),
+        freq: Math.max(0, Number(c.freq || c.sendCount || 0)),
+      };
+    }).filter(c => c.name);
     state.nextContactId = Math.max(1, ...state.contacts.map(c => c.id + 1));
   }
   if (Array.isArray(data.tacoTemplates)) {
@@ -429,9 +435,22 @@ function applyStoredData(data){
       }
       usedBlockIds.add(id);
       UID = Math.max(UID, id);
+      const recipients = Array.isArray(b.recipients) ? b.recipients.map(recipient => {
+        if (recipient && typeof recipient === 'object' && !Array.isArray(recipient)) {
+          if (!Object.prototype.hasOwnProperty.call(recipient, 'memberId')) migratedRecipients = true;
+          return {
+            name: String(recipient.name || '').trim(),
+            memberId: String(recipient.memberId || '').trim(),
+          };
+        }
+        migratedRecipients = true;
+        const name = String(recipient || '').trim();
+        const matches = state.contacts.filter(contact => contact.name === name);
+        return { name, memberId: matches.length === 1 ? matches[0].memberId : '' };
+      }).filter(recipient => recipient.name) : [];
       return {
         id,
-        recipients: Array.isArray(b.recipients) ? b.recipients.map(String).filter(Boolean) : [],
+        recipients,
         count: Math.max(1, Math.min(9, Number(b.count || 1))),
         body: String(b.body || ''),
       };
@@ -447,7 +466,7 @@ function applyStoredData(data){
   if (typeof data.webhookUrl === 'string') state.webhook = data.webhookUrl;
   if (data.theme === 'light' || data.theme === 'dark') state.theme = data.theme;
   if (TONES[data.accentColor]) state.tone = data.accentColor;
-  if (repairedBlockIds) {
+  if (repairedBlockIds || migratedContactMemberIds || migratedRecipients) {
     persistLocal();
     if (userDocRef()) saveToFirestore();
   }
@@ -609,13 +628,15 @@ function outputBlocks(){
 }
 
 /* タコス投稿の算出（mode: merge=個数別にまとめる / split=1人ずつ） */
+const recipientName = recipient => typeof recipient === 'string' ? recipient : String(recipient && recipient.name || '');
+const recipientMemberId = recipient => typeof recipient === 'string' ? '' : String(recipient && recipient.memberId || '');
 function tacoPosts(){
   const valid = state.blocks.filter(b => b.recipients.length && b.body.trim() && b.count > 0);
   if (state.tacoMode === 'split') {
     const posts = []; let n = 0;
     valid.forEach(b => b.recipients.forEach(r => {
       n++;
-      posts.push({ num: n, count: b.count, people: 1, consume: b.count, text: r + '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count) });
+      posts.push({ num: n, count: b.count, people: 1, consume: b.count, text: recipientName(r) + '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count) });
     }));
     return posts;
   }
@@ -623,7 +644,7 @@ function tacoPosts(){
   valid.forEach(b => { (byCount[b.count] = byCount[b.count] || []).push(b); });
   return Object.keys(byCount).map(Number).sort((a,b) => b - a).map((c, i) => {
     const bs = byCount[c];
-    const text = bs.map(b => b.recipients.join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
+    const text = bs.map(b => b.recipients.map(recipientName).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
     const people = bs.reduce((a,b) => a + b.recipients.length, 0);
     return { num: i + 1, count: c, people, consume: people * c, text };
   });
@@ -851,16 +872,20 @@ const App = {
   removeBlock(id){ state.blocks = state.blocks.filter(b => b.id !== id); render(); },
   bumpCount(id, d){ const b = state.blocks.find(b => b.id === id); if(b) b.count = Math.max(1, Math.min(9, b.count + d)); render(); },
   setBody(id, v, shouldRender){ const b = state.blocks.find(b => b.id === id); if(b) b.body = v; if(shouldRender) render(); },
-  pickRecipient(id, name){
+  pickRecipient(id, contactId){
     const b = state.blocks.find(b => b.id === id);
-    if(b && name && !b.recipients.includes(name)){
-      b.recipients.push(name);
-      const contact = state.contacts.find(c => c.name === name);
-      if(contact) contact.freq = Math.max(0, Number(contact.freq || 0)) + 1;
+    const contact = state.contacts.find(c => c.id === Number(contactId));
+    if(b && contact){
+      const recipient = { name: contact.name, memberId: String(contact.memberId || '').trim() };
+      const selected = b.recipients.some(r => recipientName(r) === recipient.name && recipientMemberId(r) === recipient.memberId);
+      if(!selected){
+        b.recipients.push(recipient);
+        contact.freq = Math.max(0, Number(contact.freq || 0)) + 1;
+      }
     }
     render();
   },
-  removeRecipient(id, name){ const b = state.blocks.find(b => b.id === id); if(b) b.recipients = b.recipients.filter(r => r !== name); render(); },
+  removeRecipient(id, recipientIndex){ const b = state.blocks.find(b => b.id === id); if(b) b.recipients = b.recipients.filter((_, index) => index !== recipientIndex); render(); },
 
   /* タコス: 出力 */
   toggleTacoOutput(){ state.tacoOutputOpen = !state.tacoOutputOpen; render(); },
@@ -876,7 +901,7 @@ const App = {
     const names = state.bulkText.split('\n').map(n => n.replace(/^[＠@\s]+/,'').trim()).filter(Boolean);
     if(!names.length){ toast('名前を貼り付けてください'); return; }
     const existing = new Set(state.contacts.map(c => c.name)); let added = 0;
-    names.forEach(n => { if(!existing.has(n)){ existing.add(n); state.contacts.push({ id: state.nextContactId++, name: n, freq: 0 }); added++; } });
+    names.forEach(n => { if(!existing.has(n)){ existing.add(n); state.contacts.push({ id: state.nextContactId++, name: n, memberId: '', freq: 0 }); added++; } });
     state.bulkText = '';
     render();
     toast(added ? added + '人を登録しました' : '新しい相手はありませんでした');
@@ -903,7 +928,7 @@ const App = {
     render();
   },
   cancelEditContact(){ state.editingContactId = null; state.editContactName = ''; state.editingContactBackup = ''; render(); },
-  removeContact(id){ const c = state.contacts.find(c => c.id === id); state.contacts = state.contacts.filter(c => c.id !== id); if(c) state.blocks.forEach(b => { b.recipients = b.recipients.filter(r => r !== c.name); }); render(); },
+  removeContact(id){ const c = state.contacts.find(c => c.id === id); state.contacts = state.contacts.filter(c => c.id !== id); if(c) state.blocks.forEach(b => { b.recipients = b.recipients.filter(r => recipientName(r) !== c.name || recipientMemberId(r) !== String(c.memberId || '')); }); render(); },
   setTplLabel(v){ state.newTemplateLabel = v; },
   setTplBody(v){ state.newTemplateBody = v; },
   addTemplate(){ const label = state.newTemplateLabel.trim(), body = state.newTemplateBody.trim(); if(!label || !body){ toast('ラベルと文面を入力してください'); return; } state.templates.push({ id: 'tpl'+uid(), label, body }); state.newTemplateLabel=''; state.newTemplateBody=''; render(); toast('テンプレートを追加しました'); },
@@ -1149,12 +1174,12 @@ function viewReport(){
 /* ---- タコスタブ ---- */
 function viewTacos(){
   const blocks = state.blocks.map((b, i) => {
-    const recipients = b.recipients.map(r =>
-      `<span class="rcpt">${esc(r)}<button class="icon-btn" style="color:var(--accent);opacity:.7;padding:0;" onclick="App.removeRecipient(${b.id},'${esc(r).replace(/'/g,"\\'")}')" aria-label="外す">${I.closeSm}</button></span>`
+    const recipients = b.recipients.map((r, recipientIndex) =>
+      `<span class="rcpt">${esc(recipientName(r))}<button class="icon-btn" style="color:var(--accent);opacity:.7;padding:0;" onclick="App.removeRecipient(${b.id},${recipientIndex})" aria-label="外す">${I.closeSm}</button></span>`
     ).join('');
     const options = state.contacts.slice().sort((a,c)=>c.freq-a.freq)
-      .filter(c => !b.recipients.includes(c.name))
-      .map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+      .filter(c => !b.recipients.some(r => recipientName(r) === c.name && recipientMemberId(r) === String(c.memberId || '')))
+      .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     const tplChips = state.templates.map(t => {
       const active = b.body.trim() === t.body;
       return `<button class="tpl-chip ${active?'is-active':''}" onclick="App.setBody(${b.id},'${esc(t.body).replace(/'/g,"\\'")}',true)">${esc(t.label)}</button>`;
