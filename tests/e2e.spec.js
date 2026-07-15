@@ -179,11 +179,11 @@ test.describe('合計時間の固定表示と色分け', () => {
 
 function makeTacoState({ templateLabel, templateBody }) {
   const data = makeState([{ hours: 8, name: 'テンプレート検証' }]);
-  data.tacoContacts = [{ id: 1, name: 'テストユーザー', freq: 0 }];
+  data.tacoContacts = [{ id: 1, name: 'テストユーザー', memberId: 'U000TEST', freq: 0 }];
   data.tacoTemplates = [{ id: 'tpl1', label: templateLabel, body: templateBody }];
   data.tacoBlocks = [{
     id: 1,
-    recipients: ['テストユーザー'],
+    recipients: [{ name: 'テストユーザー', memberId: 'U000TEST' }],
     count: 1,
     body: templateBody,
   }];
@@ -274,18 +274,19 @@ test.describe('タコステンプレート編集', () => {
 test.describe('タコス出力のメンション案内', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('プレビューとコピー出力で宛先名の前に＠や@が付かない', async ({ page }) => {
+  test('プレビューは＠名前でコピー出力はメンバーIDになる', async ({ page }) => {
     await loadWithState(page, makeTacoState({
       templateLabel: 'お礼',
       templateBody: 'ありがとうございました',
     }));
     await openTacos(page);
 
-    const expectedPost = 'テストユーザー\nありがとうございました\n🌮';
+    const expectedPreview = '＠テストユーザー\nありがとうございました\n🌮';
+    const expectedCopy = '<@U000TEST>\nありがとうございました\n🌮';
     const preview = page.locator('.post__body');
-    await expect(preview).toHaveText(expectedPost);
-    await expect(preview).not.toContainText('＠テストユーザー');
-    await expect(preview).not.toContainText('@テストユーザー');
+    await expect(preview).toHaveText(expectedPreview);
+    await expect(preview).toContainText('＠テストユーザー');
+    await expect(preview).not.toContainText('<@');
 
     await page.evaluate(() => {
       window.__copiedText = null;
@@ -297,10 +298,10 @@ test.describe('タコス出力のメンション案内', () => {
     });
     await page.locator('.post').getByRole('button', { name: 'コピー' }).click();
 
-    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(expectedPost);
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(expectedCopy);
     const copiedText = await page.evaluate(() => window.__copiedText);
-    expect(copiedText).not.toContain('＠テストユーザー');
-    expect(copiedText).not.toContain('@テストユーザー');
+    expect(copiedText).toContain('<@U000TEST>');
+    expect(copiedText).not.toContain('テストユーザー');
   });
 
   test('ヒントカードが操作なしで投稿一覧の下に表示される', async ({ page }) => {
@@ -585,7 +586,7 @@ test.describe('タコス メンバーIDのデータ移行', () => {
     storedRecipients = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).tacoBlocks[0].recipients, STORAGE_KEY);
     expect(storedRecipients).toEqual([{ name: '選択ユーザー', memberId: 'U000TEST' }]);
     await expect(page.locator('.block').first().locator('.rcpt')).toContainText('選択ユーザー');
-    await expect(page.locator('.post__body')).toHaveText('選択ユーザー\n選択後の本文\n🌮');
+    await expect(page.locator('.post__body')).toHaveText('＠選択ユーザー\n選択後の本文\n🌮');
   });
 });
 
@@ -688,5 +689,105 @@ test.describe('タコス メンバーIDの登録UI', () => {
     await openMemberIdContactList(page, 2);
     await expect(contactSection(page).getByText('残す既存連絡先', { exact: true })).toBeVisible();
     await expect(contactSection(page).getByText('新規連絡先', { exact: true })).toBeVisible();
+  });
+});
+
+function makeMemberIdOutputState({ mode = 'split', blocks }) {
+  const data = makeTacoState({ templateLabel: 'お礼', templateBody: '出力本文' });
+  data.tacoContacts = [
+    { id: 1, name: '表示ユーザーA', memberId: 'U000TEST1', freq: 0 },
+    { id: 2, name: '表示ユーザーB', memberId: 'U000TEST2', freq: 0 },
+  ];
+  data.tacoBlocks = blocks;
+  data.tacoMode = mode;
+  return data;
+}
+
+async function installCopyCapture(page) {
+  await page.evaluate(() => {
+    window.__copiedText = null;
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    document.execCommand = (command) => {
+      if (command === 'copy') window.__copiedText = document.activeElement.value;
+      return true;
+    };
+  });
+}
+
+test.describe('タコス メンバーID出力', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('プレビューは＠名前を表示しメンバーID記法を表示しない', async ({ page }) => {
+    await loadWithState(page, makeMemberIdOutputState({
+      blocks: [{
+        id: 990,
+        recipients: [{ name: '表示ユーザーA', memberId: 'U000TEST1' }],
+        count: 1,
+        body: '出力本文',
+      }],
+    }));
+    await openTacos(page);
+
+    const preview = page.locator('.post__body');
+    await expect(preview).toHaveText('＠表示ユーザーA\n出力本文\n🌮');
+    await expect(preview).not.toContainText('<@');
+  });
+
+  test('個別コピーはメンバーID記法を含み生の名前を含まない', async ({ page }) => {
+    await loadWithState(page, makeMemberIdOutputState({
+      blocks: [{
+        id: 991,
+        recipients: [{ name: '表示ユーザーA', memberId: 'U000TEST1' }],
+        count: 1,
+        body: '出力本文',
+      }],
+    }));
+    await openTacos(page);
+    await installCopyCapture(page);
+
+    await page.locator('.post').getByRole('button', { name: 'コピー' }).click();
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('<@U000TEST1>\n出力本文\n🌮');
+    const copiedText = await page.evaluate(() => window.__copiedText);
+    expect(copiedText).not.toContain('表示ユーザーA');
+  });
+
+  test('まとめモードもプレビューは＠名前で一括コピーはメンバーID記法になる', async ({ page }) => {
+    await loadWithState(page, makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [
+        { id: 992, recipients: [{ name: '表示ユーザーA', memberId: 'U000TEST1' }], count: 2, body: '本文A' },
+        { id: 993, recipients: [{ name: '表示ユーザーB', memberId: 'U000TEST2' }], count: 2, body: '本文B' },
+      ],
+    }));
+    await openTacos(page);
+
+    await expect(page.locator('.post')).toHaveCount(1);
+    await expect(page.locator('.post__body')).toHaveText('＠表示ユーザーA\n本文A\n🌮🌮\n\n＠表示ユーザーB\n本文B\n🌮🌮');
+    await expect(page.locator('.post__body')).not.toContainText('<@');
+
+    await installCopyCapture(page);
+    await page.getByRole('button', { name: '全1投稿を一括コピー' }).click();
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('<@U000TEST1>\n本文A\n🌮🌮\n\n<@U000TEST2>\n本文B\n🌮🌮');
+    const copiedText = await page.evaluate(() => window.__copiedText);
+    expect(copiedText).not.toContain('表示ユーザーA');
+    expect(copiedText).not.toContain('表示ユーザーB');
+  });
+
+  test('消費数は宛先数かけるタコス個数のまま表示される', async ({ page }) => {
+    await loadWithState(page, makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [{
+        id: 994,
+        recipients: [
+          { name: '表示ユーザーA', memberId: 'U000TEST1' },
+          { name: '表示ユーザーB', memberId: 'U000TEST2' },
+        ],
+        count: 3,
+        body: '消費数確認',
+      }],
+    }));
+    await openTacos(page);
+
+    await expect(page.locator('.post__meta')).toHaveText('消費: 2人 × 3個 = 6個');
   });
 });

@@ -83,25 +83,35 @@ state.contacts = [
   { id: 2, name: 'Bob', memberId: 'U000TEST2', freq: 0 },
 ];
 state.templates = [{ id: 'tpl1', label: 'Thanks', body: 'Thanks!' }];
-state.blocks = [{ id: 101, recipients: ['Alice', 'Bob'], count: 2, body: 'Nice work' }];
+state.blocks = [{
+  id: 101,
+  recipients: [
+    { name: 'Alice', memberId: 'U000TEST1' },
+    { name: 'Bob', memberId: 'U000TEST2' },
+  ],
+  count: 2,
+  body: 'Nice work',
+}];
 state.tacoMode = 'merge';
 
 const merged = tacoPosts();
 assert(merged.length === 1, 'merge mode should group same-count recipients into one post');
-assert(merged[0].text === `Alice\nBob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco text format is wrong');
+assert(merged[0].text === `<@U000TEST1>\n<@U000TEST2>\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco copy text format is wrong');
+assert(merged[0].previewText === `＠Alice\n＠Bob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco preview text format is wrong');
 assert(tacoDraftConsumption() === 4, 'draft taco meter should count recipients times count');
 
 state.tacoMode = 'split';
 const split = tacoPosts();
 assert(split.length === 2, 'split mode should create one post per recipient');
-assert(split[0].text === `Alice\nNice work\n${'🌮'.repeat(2)}`, 'split mode taco text format is wrong');
+assert(split[0].text === `<@U000TEST1>\nNice work\n${'🌮'.repeat(2)}`, 'split mode taco copy text format is wrong');
+assert(split[0].previewText === `＠Alice\nNice work\n${'🌮'.repeat(2)}`, 'split mode taco preview text format is wrong');
 
 App.startEditContact(1);
 App.setEditContactName('Alice New');
 App.commitEditContact(1);
 assert(state.contacts.find(c => c.id === 1).name === 'Alice New', 'contact edit did not update contact name');
-assert(state.blocks[0].recipients.includes('Alice'), 'contact edit should keep the existing selected recipient unchanged');
-assert(!state.blocks[0].recipients.includes('Alice New'), 'contact edit should not propagate to selected recipients');
+assert(state.blocks[0].recipients.some(r => r.name === 'Alice'), 'contact edit should keep the existing selected recipient unchanged');
+assert(!state.blocks[0].recipients.some(r => r.name === 'Alice New'), 'contact edit should not propagate to selected recipients');
 
 App.startEditTemplate('tpl1');
 App.setEditTemplateLabel('Great');
