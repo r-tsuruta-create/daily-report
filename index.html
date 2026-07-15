@@ -396,6 +396,7 @@ function loadLocal(){
 }
 function applyStoredData(data){
   if (!data || typeof data !== 'object') return;
+  let repairedBlockIds = false;
   const work = data.reportWork || {};
   if (typeof work.greeting === 'string') state.greeting = work.greeting;
   if (Array.isArray(work.today)) state.today = normalizeGroups(work.today);
@@ -417,12 +418,24 @@ function applyStoredData(data){
     })).filter(t => t.label && t.body);
   }
   if (Array.isArray(data.tacoBlocks)) {
-    const blocks = data.tacoBlocks.map(b => ({
-      id: Number(b.id) || uid(),
-      recipients: Array.isArray(b.recipients) ? b.recipients.map(String).filter(Boolean) : [],
-      count: Math.max(1, Math.min(9, Number(b.count || 1))),
-      body: String(b.body || ''),
-    }));
+    const restoredIds = data.tacoBlocks.map(b => Number(b.id)).filter(id => Number.isSafeInteger(id) && id > 0);
+    let nextBlockId = restoredIds.reduce((max, id) => Math.max(max, id), UID);
+    const usedBlockIds = new Set();
+    const blocks = data.tacoBlocks.map(b => {
+      let id = Number(b.id);
+      if (!Number.isSafeInteger(id) || id <= 0 || usedBlockIds.has(id)) {
+        id = ++nextBlockId;
+        repairedBlockIds = true;
+      }
+      usedBlockIds.add(id);
+      UID = Math.max(UID, id);
+      return {
+        id,
+        recipients: Array.isArray(b.recipients) ? b.recipients.map(String).filter(Boolean) : [],
+        count: Math.max(1, Math.min(9, Number(b.count || 1))),
+        body: String(b.body || ''),
+      };
+    });
     state.blocks = blocks.length ? blocks : [makeBlankBlock()];
   }
   if (data.tacoUsage) {
@@ -434,6 +447,10 @@ function applyStoredData(data){
   if (typeof data.webhookUrl === 'string') state.webhook = data.webhookUrl;
   if (data.theme === 'light' || data.theme === 'dark') state.theme = data.theme;
   if (TONES[data.accentColor]) state.tone = data.accentColor;
+  if (repairedBlockIds) {
+    persistLocal();
+    if (userDocRef()) saveToFirestore();
+  }
 }
 function persist(immediate = false){
   persistLocal();

@@ -445,3 +445,90 @@ test.describe('タコス宛先候補と操作間隔', () => {
     expect(deleteBox.height).toBeGreaterThanOrEqual(44);
   });
 });
+
+function makeBlockIdentityState(blocks) {
+  const data = makeRecipientRankingState();
+  data.tacoBlocks = blocks;
+  return data;
+}
+
+function tacoBlock(id, body = '') {
+  return { id, recipients: [], count: 1, body };
+}
+
+async function addThirdTacoBlock(page) {
+  await openTacos(page);
+  await page.getByRole('button', { name: '宛先＋文面ブロックを追加' }).click();
+  await expect(page.locator('.block')).toHaveCount(3);
+}
+
+test.describe('タコスブロックIDの復元と操作', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('3件目の本文編集は3件目だけに反映され2件目は変わらない', async ({ page }) => {
+    await loadWithState(page, makeBlockIdentityState([
+      tacoBlock(112, '1件目の本文'),
+      tacoBlock(113, '2件目の本文'),
+    ]));
+    await addThirdTacoBlock(page);
+
+    const blocks = page.locator('.block');
+    await blocks.nth(2).locator('.body-input').fill('3件目だけの本文');
+    await blocks.nth(2).locator('.count__btn').last().click();
+
+    await expect(blocks.nth(1).locator('.body-input')).toHaveValue('2件目の本文');
+    await expect(blocks.nth(2).locator('.body-input')).toHaveValue('3件目だけの本文');
+  });
+
+  test('3件目で選んだ宛先は3件目だけに反映される', async ({ page }) => {
+    await loadWithState(page, makeBlockIdentityState([
+      tacoBlock(112),
+      tacoBlock(113),
+    ]));
+    await addThirdTacoBlock(page);
+
+    const blocks = page.locator('.block');
+    await blocks.nth(2).locator('select').selectOption({ label: '探した人' });
+
+    await expect(blocks.nth(1).locator('.rcpt')).toHaveCount(0);
+    await expect(blocks.nth(2).locator('.rcpt')).toContainText('探した人');
+  });
+
+  test('重複IDは復元時に一意化され保存されてリロード後も保たれる', async ({ page }) => {
+    await loadWithState(page, makeBlockIdentityState([
+      tacoBlock(700, '1件目'),
+      tacoBlock(700, '2件目'),
+      tacoBlock(701, '3件目'),
+    ]));
+
+    const storedIds = await page.evaluate((key) => {
+      return JSON.parse(localStorage.getItem(key)).tacoBlocks.map(block => block.id);
+    }, STORAGE_KEY);
+    expect(new Set(storedIds).size).toBe(3);
+
+    await page.reload();
+    const reloadedIds = await page.evaluate((key) => {
+      return JSON.parse(localStorage.getItem(key)).tacoBlocks.map(block => block.id);
+    }, STORAGE_KEY);
+    expect(new Set(reloadedIds).size).toBe(3);
+    expect(reloadedIds).toEqual(storedIds);
+  });
+
+  test('3ブロックから1つを削除しても他のブロックを巻き込まない', async ({ page }) => {
+    await loadWithState(page, makeBlockIdentityState([
+      tacoBlock(900, '残す1件目'),
+      tacoBlock(900, '削除する2件目'),
+      tacoBlock(901, '残す3件目'),
+    ]));
+    await openTacos(page);
+
+    let blocks = page.locator('.block');
+    await expect(blocks).toHaveCount(3);
+    await blocks.nth(1).getByRole('button', { name: '削除' }).click();
+
+    blocks = page.locator('.block');
+    await expect(blocks).toHaveCount(2);
+    await expect(blocks.nth(0).locator('.body-input')).toHaveValue('残す1件目');
+    await expect(blocks.nth(1).locator('.body-input')).toHaveValue('残す3件目');
+  });
+});
