@@ -121,7 +121,7 @@ assert(state.templates[0].label === 'Great', 'template edit did not update label
 assert(state.templates[0].body === 'Great job!', 'template edit did not update body');
 
 const docs = [
-  'docs/日報ジェネレーター_要件定義書_v6.md',
+  'docs/日報ジェネレーター_要件定義書_v8.md',
   'docs/日報ジェネレーター_詳細設計書.md',
   'docs/リリース前検証チェックリスト.md',
 ];
