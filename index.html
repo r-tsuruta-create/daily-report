@@ -631,6 +631,7 @@ function outputBlocks(){
 const recipientName = recipient => typeof recipient === 'string' ? recipient : String(recipient && recipient.name || '');
 const recipientMemberId = recipient => typeof recipient === 'string' ? '' : String(recipient && recipient.memberId || '');
 const recipientPreviewLabel = recipient => recipientMemberId(recipient) ? '＠' + recipientName(recipient) : recipientName(recipient);
+const recipientCopyLabel = recipient => recipientName(recipient);
 const recipientSlackLabel = recipient => recipientMemberId(recipient) ? '<@' + recipientMemberId(recipient) + '>' : recipientName(recipient);
 function tacoPosts(){
   const valid = state.blocks.filter(b => b.recipients.length && b.body.trim() && b.count > 0);
@@ -639,7 +640,15 @@ function tacoPosts(){
     valid.forEach(b => b.recipients.forEach(r => {
       n++;
       const suffix = '\n' + b.body.trim() + '\n' + '🌮'.repeat(b.count);
-      posts.push({ num: n, count: b.count, people: 1, consume: b.count, previewText: recipientPreviewLabel(r) + suffix, text: recipientSlackLabel(r) + suffix });
+      posts.push({
+        num: n,
+        count: b.count,
+        people: 1,
+        consume: b.count,
+        previewText: recipientPreviewLabel(r) + suffix,
+        text: recipientCopyLabel(r) + suffix,
+        slackText: recipientSlackLabel(r) + suffix,
+      });
     }));
     return posts;
   }
@@ -648,9 +657,10 @@ function tacoPosts(){
   return Object.keys(byCount).map(Number).sort((a,b) => b - a).map((c, i) => {
     const bs = byCount[c];
     const previewText = bs.map(b => b.recipients.map(recipientPreviewLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
-    const text = bs.map(b => b.recipients.map(recipientSlackLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
+    const text = bs.map(b => b.recipients.map(recipientCopyLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
+    const slackText = bs.map(b => b.recipients.map(recipientSlackLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
     const people = bs.reduce((a,b) => a + b.recipients.length, 0);
-    return { num: i + 1, count: c, people, consume: people * c, previewText, text };
+    return { num: i + 1, count: c, people, consume: people * c, previewText, text, slackText };
   });
 }
 function tacoDraftConsumption(){
@@ -896,6 +906,21 @@ const App = {
   setTacoMode(m){ state.tacoMode = m; render(); },
   copyPost(num){ const p = tacoPosts().find(p => p.num === num); if(!p) return; syncDailyUsage(); state.accumulated += p.consume; render(); copyText(p.text, '投稿'+num+'をコピー'); },
   copyAllTacos(){ const posts = tacoPosts(); if(!posts.length) return; const all = posts.map(p => p.text).join('\n\n'); syncDailyUsage(); state.accumulated += posts.reduce((a,p)=>a+p.consume,0); render(); copyText(all, '全'+posts.length+'投稿をコピー'); },
+  async sendTacos(){
+    const posts = tacoPosts();
+    if(!posts.length) return;
+    if(!state.webhook){ toast('先に設定画面で送信先を登録してください'); return; }
+    try {
+      for(const post of posts) await postToSlack(post.slackText);
+      syncDailyUsage();
+      state.accumulated += posts.reduce((total, post) => total + post.consume, 0);
+      persist(true);
+      toast('Slackへ送信しました');
+    } catch(error) {
+      toast('Slackへ送信できませんでした');
+      console.error(error);
+    }
+  },
 
   /* 設定: Slack / 連絡先 / テンプレート */
   setWebhook(v){ state.webhook = v; },
@@ -1290,7 +1315,10 @@ function viewTacos(){
       <div style="display:flex;gap:6px;align-items:flex-start;font-size:10.8px;color:var(--muted);margin-top:6px;padding:8px 9px;line-height:1.55;border:1px solid var(--border2);border-radius:10px;background:var(--surface2);">
         <span style="flex:none;">ⓘ</span><span>${mentionHint}</span>
       </div>
-      ${posts.length ? `<button class="btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>` : ''}
+      ${posts.length ? `<div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-primary" style="flex:1;min-width:0;padding:12px;border-radius:12px;font-size:13.5px;" onclick="App.copyAllTacos()">${I.copy}全${posts.length}投稿を一括コピー</button>
+        <button class="btn-ghost" style="flex:none;padding:12px 16px;border-radius:12px;font-size:13.5px;" onclick="App.sendTacos()">Slack送信</button>
+      </div>` : ''}
     </div>
   </div>`;
 }

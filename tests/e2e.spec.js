@@ -274,7 +274,7 @@ test.describe('タコステンプレート編集', () => {
 test.describe('タコス出力のメンション案内', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('プレビューは＠名前でコピー出力はメンバーIDになる', async ({ page }) => {
+  test('プレビューは＠名前でコピー出力は名前のみになる', async ({ page }) => {
     await loadWithState(page, makeTacoState({
       templateLabel: 'お礼',
       templateBody: 'ありがとうございました',
@@ -282,7 +282,7 @@ test.describe('タコス出力のメンション案内', () => {
     await openTacos(page);
 
     const expectedPreview = '＠テストユーザー\nありがとうございました\n🌮';
-    const expectedCopy = '<@U000TEST>\nありがとうございました\n🌮';
+    const expectedCopy = 'テストユーザー\nありがとうございました\n🌮';
     const preview = page.locator('.post__body');
     await expect(preview).toHaveText(expectedPreview);
     await expect(preview).toContainText('＠テストユーザー');
@@ -300,8 +300,10 @@ test.describe('タコス出力のメンション案内', () => {
 
     await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(expectedCopy);
     const copiedText = await page.evaluate(() => window.__copiedText);
-    expect(copiedText).toContain('<@U000TEST>');
-    expect(copiedText).not.toContain('テストユーザー');
+    expect(copiedText).toContain('テストユーザー');
+    expect(copiedText).not.toContain('＠');
+    expect(copiedText).not.toContain('@');
+    expect(copiedText).not.toContain('<@');
   });
 
   test('ヒントカードが操作なしで投稿一覧の下に表示される', async ({ page }) => {
@@ -733,7 +735,7 @@ test.describe('タコス メンバーID出力', () => {
     await expect(preview).not.toContainText('<@');
   });
 
-  test('個別コピーはメンバーID記法を含み生の名前を含まない', async ({ page }) => {
+  test('個別コピーは名前のみを含み＠とメンバーID記法を含まない', async ({ page }) => {
     await loadWithState(page, makeMemberIdOutputState({
       blocks: [{
         id: 991,
@@ -746,12 +748,15 @@ test.describe('タコス メンバーID出力', () => {
     await installCopyCapture(page);
 
     await page.locator('.post').getByRole('button', { name: 'コピー' }).click();
-    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('<@U000TEST1>\n出力本文\n🌮');
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('表示ユーザーA\n出力本文\n🌮');
     const copiedText = await page.evaluate(() => window.__copiedText);
-    expect(copiedText).not.toContain('表示ユーザーA');
+    expect(copiedText).toContain('表示ユーザーA');
+    expect(copiedText).not.toContain('＠');
+    expect(copiedText).not.toContain('@');
+    expect(copiedText).not.toContain('<@');
   });
 
-  test('まとめモードもプレビューは＠名前で一括コピーはメンバーID記法になる', async ({ page }) => {
+  test('まとめモードもプレビューは＠名前で一括コピーは名前のみになる', async ({ page }) => {
     await loadWithState(page, makeMemberIdOutputState({
       mode: 'merge',
       blocks: [
@@ -767,10 +772,13 @@ test.describe('タコス メンバーID出力', () => {
 
     await installCopyCapture(page);
     await page.getByRole('button', { name: '全1投稿を一括コピー' }).click();
-    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('<@U000TEST1>\n本文A\n🌮🌮\n\n<@U000TEST2>\n本文B\n🌮🌮');
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('表示ユーザーA\n本文A\n🌮🌮\n\n表示ユーザーB\n本文B\n🌮🌮');
     const copiedText = await page.evaluate(() => window.__copiedText);
-    expect(copiedText).not.toContain('表示ユーザーA');
-    expect(copiedText).not.toContain('表示ユーザーB');
+    expect(copiedText).toContain('表示ユーザーA');
+    expect(copiedText).toContain('表示ユーザーB');
+    expect(copiedText).not.toContain('＠');
+    expect(copiedText).not.toContain('@');
+    expect(copiedText).not.toContain('<@');
   });
 
   test('消費数は宛先数かけるタコス個数のまま表示される', async ({ page }) => {
@@ -789,6 +797,108 @@ test.describe('タコス メンバーID出力', () => {
     await openTacos(page);
 
     await expect(page.locator('.post__meta')).toHaveText('消費: 2人 × 3個 = 6個');
+  });
+});
+
+async function installSlackCapture(page) {
+  await page.evaluate(() => {
+    window.__slackTexts = [];
+    window.postToSlack = async (text) => {
+      window.__slackTexts.push(text);
+    };
+  });
+}
+
+test.describe('タコス Slack送信', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('個別モードはSlack送信にメンバーIDを使いIDなしは名前へフォールバックする', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'split',
+      blocks: [{
+        id: 995,
+        recipients: [
+          { name: '表示ユーザーA', memberId: 'U000TEST1' },
+          { name: 'ID未登録ユーザー', memberId: '' },
+        ],
+        count: 2,
+        body: '送信本文',
+      }],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+    await installSlackCapture(page);
+
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+
+    await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
+      '<@U000TEST1>\n送信本文\n🌮🌮',
+      'ID未登録ユーザー\n送信本文\n🌮🌮',
+    ]);
+  });
+
+  test('まとめモードは全投稿のSlack送信にメンバーID記法を使う', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [
+        { id: 996, recipients: [{ name: '表示ユーザーA', memberId: 'U000TEST1' }], count: 2, body: '本文A' },
+        { id: 997, recipients: [{ name: '表示ユーザーB', memberId: 'U000TEST2' }], count: 2, body: '本文B' },
+      ],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+    await installSlackCapture(page);
+
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+
+    await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
+      '<@U000TEST1>\n本文A\n🌮🌮\n\n<@U000TEST2>\n本文B\n🌮🌮',
+    ]);
+  });
+
+  test('Slack送信後は宛先人数かける個数を本日の消費へ加算する', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [{
+        id: 998,
+        recipients: [
+          { name: '表示ユーザーA', memberId: 'U000TEST1' },
+          { name: '表示ユーザーB', memberId: 'U000TEST2' },
+        ],
+        count: 3,
+        body: '消費加算',
+      }],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+    await installSlackCapture(page);
+
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+
+    await expect(page.locator('.toast')).toHaveText('Slackへ送信しました');
+    await expect.poll(() => page.evaluate((key) => {
+      const saved = JSON.parse(localStorage.getItem(key));
+      return saved.tacoUsage.consumed;
+    }, STORAGE_KEY)).toBe(6);
+  });
+
+  test('送信先が未設定なら設定画面での登録を案内して送信しない', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [{ id: 999, recipients: [{ name: '表示ユーザーA', memberId: 'U000TEST1' }], count: 1, body: '未設定確認' }],
+    });
+    data.webhookUrl = '';
+    await loadWithState(page, data);
+    await openTacos(page);
+    await installSlackCapture(page);
+
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+
+    await expect(page.locator('.toast')).toHaveText('先に設定画面で送信先を登録してください');
+    expect(await page.evaluate(() => window.__slackTexts)).toEqual([]);
   });
 });
 
