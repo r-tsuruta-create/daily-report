@@ -791,3 +791,118 @@ test.describe('タコス メンバーID出力', () => {
     await expect(page.locator('.post__meta')).toHaveText('消費: 2人 × 3個 = 6個');
   });
 });
+
+function makeScrollRetentionState() {
+  const data = makeRecipientRankingState();
+  data.tacoContacts = Array.from({ length: 20 }, (_, index) => ({
+    id: index + 1,
+    name: `スクロール連絡先${String(index + 1).padStart(2, '0')}`,
+    memberId: `U000TEST${String(index + 1).padStart(2, '0')}`,
+    freq: 0,
+  }));
+  data.tacoBlocks = Array.from({ length: 10 }, (_, index) => ({
+    id: 1100 + index,
+    recipients: [],
+    count: 1,
+    body: `スクロール確認本文${index + 1}`,
+  }));
+  return data;
+}
+
+async function openScrollableContactList(page) {
+  await openSettings(page);
+  await contactSection(page).getByRole('button', { name: /登録済み 20名/ }).click();
+  await expect(page.locator('.contact-scroll')).toBeVisible();
+}
+
+async function scrollToBottom(locator) {
+  const scrollTop = await locator.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+    return el.scrollTop;
+  });
+  expect(scrollTop).toBeGreaterThan(0);
+  return scrollTop;
+}
+
+async function expectScrollTop(locator, expected) {
+  await expect.poll(() => locator.evaluate((el) => el.scrollTop)).toBe(expected);
+}
+
+test.describe('再描画時のスクロール位置維持', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('連絡先一覧を下までスクロールして編集を開始しても位置を維持する', async ({ page }) => {
+    await loadWithState(page, makeScrollRetentionState());
+    await openScrollableContactList(page);
+
+    const contactScroll = page.locator('.contact-scroll');
+    const before = await scrollToBottom(contactScroll);
+    const targetRow = contactSection(page).locator('.contact-row').filter({ hasText: 'スクロール連絡先20' });
+    await targetRow.getByRole('button', { name: '編集' }).click();
+
+    await expect(page.locator('[data-k="edit-contact-20"]')).toBeVisible();
+    await expectScrollTop(contactScroll, before);
+  });
+
+  test('連絡先一覧を下までスクロールして編集を保存しても位置を維持する', async ({ page }) => {
+    await loadWithState(page, makeScrollRetentionState());
+    await openScrollableContactList(page);
+
+    let contactScroll = page.locator('.contact-scroll');
+    await scrollToBottom(contactScroll);
+    const targetRow = contactSection(page).locator('.contact-row').filter({ hasText: 'スクロール連絡先20' });
+    await targetRow.getByRole('button', { name: '編集' }).click();
+
+    contactScroll = page.locator('.contact-scroll');
+    await scrollToBottom(contactScroll);
+    const beforeSaveDistance = await contactScroll.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop);
+    expect(beforeSaveDistance).toBe(0);
+    await page.locator('[data-k="edit-contact-20"]').fill('スクロール連絡先20更新');
+    await contactSection(page).getByRole('button', { name: '保存' }).click();
+
+    await expect(contactSection(page).getByText('スクロール連絡先20更新', { exact: true })).toBeVisible();
+    await expect.poll(() => contactScroll.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBe(0);
+    expect(await contactScroll.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  });
+
+  test('連絡先を削除しても一覧のスクロール位置を維持する', async ({ page }) => {
+    await loadWithState(page, makeScrollRetentionState());
+    await openScrollableContactList(page);
+
+    const contactScroll = page.locator('.contact-scroll');
+    const targetRow = contactSection(page).locator('.contact-row').filter({ hasText: 'スクロール連絡先10' });
+    await targetRow.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const beforeDelete = await contactScroll.evaluate((el) => el.scrollTop);
+    expect(beforeDelete).toBeGreaterThan(0);
+    await targetRow.getByRole('button', { name: '削除' }).click();
+
+    await expectScrollTop(contactScroll, beforeDelete);
+    await expect(contactSection(page).getByText('スクロール連絡先10', { exact: true })).toHaveCount(0);
+  });
+
+  test('タコス画面を下までスクロールして個数を変更しても位置を維持する', async ({ page }) => {
+    await loadWithState(page, makeScrollRetentionState());
+    await openTacos(page);
+
+    const mainScroll = page.locator('.app[data-tab="tacos"] .scroll');
+    const before = await scrollToBottom(mainScroll);
+    const blocks = page.locator('.block');
+    const blockCount = await blocks.count();
+    await blocks.nth(blockCount - 1).getByRole('button', { name: '+' }).click();
+
+    await expect(blocks.nth(blockCount - 1).locator('.count__val')).toContainText('2');
+    await expectScrollTop(mainScroll, before);
+  });
+
+  test('タブを切り替えると新しいタブの先頭に戻る', async ({ page }) => {
+    await loadWithState(page, makeScrollRetentionState());
+    await openTacos(page);
+
+    const tacoScroll = page.locator('.app[data-tab="tacos"] .scroll');
+    await scrollToBottom(tacoScroll);
+    await openSettings(page);
+
+    const settingsScroll = page.locator('.app[data-tab="settings"] .scroll');
+    await expectScrollTop(settingsScroll, 0);
+  });
+});

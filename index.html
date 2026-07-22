@@ -323,7 +323,6 @@ const state = {
   _toastTimer: null,
 };
 let dragSession = null;
-let resetScroll = false;
 
 /* =========================================================================
    小物ヘルパー
@@ -683,7 +682,7 @@ const findCat = (catId) => groupsOf().find(g => g.id === catId);
 
 const App = {
   /* ナビ / テーマ */
-  go(tab){ resetScroll = true; state.tab = tab; render(); },
+  go(tab){ state.tab = tab; renderFromTop(); },
   setTheme(t){ state.theme = t; applyTheme(); render(); },
   setTone(k){ state.tone = k; applyTheme(); render(); },
 
@@ -1314,7 +1313,7 @@ function viewSettings(){
 
   const contacts = state.contacts.slice().sort((a,b)=>b.freq-a.freq);
   const contactList = state.contactsOpen ? `
-    <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border2);border-radius:11px;background:var(--surface2);margin-bottom:11px;">
+    <div class="contact-scroll" style="max-height:240px;overflow-y:auto;border:1px solid var(--border2);border-radius:11px;background:var(--surface2);margin-bottom:11px;">
       ${contacts.map(c => {
         const editing = state.editingContactId === c.id;
         return editing ? `
@@ -1474,7 +1473,10 @@ function viewNav(){
 /* =========================================================================
    render — 状態から全画面を組み立て、フォーカス位置を復元
    ========================================================================= */
-function render(){
+function renderFromTop(){
+  render({ scrollToTop: true });
+}
+function render({ scrollToTop = false } = {}){
   const app = document.getElementById('app');
   if (!app) return;
   syncDailyUsage();
@@ -1487,6 +1489,8 @@ function render(){
   if (fk) { try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch(e){} }
   const oldScroll = app.querySelector('.scroll');
   const scrollTop = oldScroll ? oldScroll.scrollTop : 0;
+  const oldContactScroll = app.querySelector('.contact-scroll');
+  const contactScrollTop = oldContactScroll ? oldContactScroll.scrollTop : 0;
 
   let body = '';
   if (state.tab === 'report')   body = viewReport();
@@ -1499,16 +1503,20 @@ function render(){
     `<div class="scroll">${body}</div>` +
     viewNav() +
     (state.toast ? `<div class="toast">${esc(state.toast)}</div>` : '');
-  const newScroll = app.querySelector('.scroll');
-  if (newScroll) {
-    newScroll.scrollTop = resetScroll ? 0 : scrollTop;
-  }
-  resetScroll = false;
-
   // フォーカス復元
   if (fk) {
     const el = app.querySelector('[data-k="' + (window.CSS && CSS.escape ? CSS.escape(fk) : fk) + '"]');
-    if (el) { el.focus(); if (selStart != null) { try { el.setSelectionRange(selStart, selEnd); } catch(e){} } }
+    if (el) {
+      try { el.focus({ preventScroll: true }); } catch(e) { el.focus(); }
+      if (selStart != null) { try { el.setSelectionRange(selStart, selEnd); } catch(e){} }
+    }
+  }
+
+  const newScroll = app.querySelector('.scroll');
+  if (newScroll) newScroll.scrollTop = scrollToTop ? 0 : scrollTop;
+  const newContactScroll = app.querySelector('.contact-scroll');
+  if (newContactScroll) {
+    newContactScroll.scrollTop = scrollToTop ? 0 : contactScrollTop;
   }
 }
 
