@@ -656,9 +656,9 @@ function tacoPosts(){
   valid.forEach(b => { (byCount[b.count] = byCount[b.count] || []).push(b); });
   return Object.keys(byCount).map(Number).sort((a,b) => b - a).map((c, i) => {
     const bs = byCount[c];
-    const previewText = bs.map(b => b.recipients.map(recipientPreviewLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
-    const text = bs.map(b => b.recipients.map(recipientCopyLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
-    const slackText = bs.map(b => b.recipients.map(recipientSlackLabel).join('\n') + '\n' + b.body.trim() + '\n' + '🌮'.repeat(c)).join('\n\n');
+    const previewText = bs.map(b => b.recipients.map(recipientPreviewLabel).join('\n') + '\n' + b.body.trim()).join('\n\n') + '\n' + '🌮'.repeat(c);
+    const text = bs.map(b => b.recipients.map(recipientCopyLabel).join('\n') + '\n' + b.body.trim()).join('\n\n') + '\n' + '🌮'.repeat(c);
+    const slackText = bs.map(b => b.recipients.map(recipientSlackLabel).join('\n') + '\n' + b.body.trim()).join('\n\n') + '\n' + '🌮'.repeat(c);
     const people = bs.reduce((a,b) => a + b.recipients.length, 0);
     return { num: i + 1, count: c, people, consume: people * c, previewText, text, slackText };
   });

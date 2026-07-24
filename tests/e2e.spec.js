@@ -767,12 +767,12 @@ test.describe('タコス メンバーID出力', () => {
     await openTacos(page);
 
     await expect(page.locator('.post')).toHaveCount(1);
-    await expect(page.locator('.post__body')).toHaveText('＠表示ユーザーA\n本文A\n🌮🌮\n\n＠表示ユーザーB\n本文B\n🌮🌮');
+    await expect(page.locator('.post__body')).toHaveText('＠表示ユーザーA\n本文A\n\n＠表示ユーザーB\n本文B\n🌮🌮');
     await expect(page.locator('.post__body')).not.toContainText('<@');
 
     await installCopyCapture(page);
     await page.getByRole('button', { name: '全1投稿を一括コピー' }).click();
-    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('表示ユーザーA\n本文A\n🌮🌮\n\n表示ユーザーB\n本文B\n🌮🌮');
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('表示ユーザーA\n本文A\n\n表示ユーザーB\n本文B\n🌮🌮');
     const copiedText = await page.evaluate(() => window.__copiedText);
     expect(copiedText).toContain('表示ユーザーA');
     expect(copiedText).toContain('表示ユーザーB');
@@ -854,7 +854,7 @@ test.describe('タコス Slack送信', () => {
     await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
 
     await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
-      '<@U000TEST1>\n本文A\n🌮🌮\n\n<@U000TEST2>\n本文B\n🌮🌮',
+      '<@U000TEST1>\n本文A\n\n<@U000TEST2>\n本文B\n🌮🌮',
     ]);
   });
 
@@ -899,6 +899,75 @@ test.describe('タコス Slack送信', () => {
 
     await expect(page.locator('.toast')).toHaveText('先に設定画面で送信先を登録してください');
     expect(await page.evaluate(() => window.__slackTexts)).toEqual([]);
+  });
+});
+
+test.describe('タコス絵文字の配置', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('まとめモードは同数の2ブロックを1投稿にまとめても投稿末尾に🌮を1セットだけ付ける', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [
+        { id: 1001, recipients: [{ name: 'まとめユーザーA', memberId: 'U000TEST1' }], count: 2, body: 'まとめ本文A' },
+        { id: 1002, recipients: [{ name: 'まとめユーザーB', memberId: 'U000TEST2' }], count: 2, body: 'まとめ本文B' },
+      ],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+
+    const post = page.locator('.post');
+    await expect(post).toHaveCount(1);
+    await expect(post.locator('.post__body')).toHaveText('＠まとめユーザーA\nまとめ本文A\n\n＠まとめユーザーB\nまとめ本文B\n🌮🌮');
+    await expect(post.locator('.post__meta')).toHaveText('消費: 2人 × 2個 = 4個');
+
+    await installCopyCapture(page);
+    await page.getByRole('button', { name: '全1投稿を一括コピー' }).click();
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('まとめユーザーA\nまとめ本文A\n\nまとめユーザーB\nまとめ本文B\n🌮🌮');
+
+    await installSlackCapture(page);
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
+      '<@U000TEST1>\nまとめ本文A\n\n<@U000TEST2>\nまとめ本文B\n🌮🌮',
+    ]);
+  });
+
+  test('個別モードは従来どおり宛先ごとの投稿末尾に🌮を1セットずつ付ける', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'split',
+      blocks: [{
+        id: 1003,
+        recipients: [
+          { name: '個別ユーザーA', memberId: 'U000TEST1' },
+          { name: '個別ユーザーB', memberId: 'U000TEST2' },
+        ],
+        count: 2,
+        body: '個別本文',
+      }],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+
+    await expect(page.locator('.post')).toHaveCount(2);
+    await expect(page.locator('.post__body')).toHaveText([
+      '＠個別ユーザーA\n個別本文\n🌮🌮',
+      '＠個別ユーザーB\n個別本文\n🌮🌮',
+    ]);
+
+    await installCopyCapture(page);
+    await page.getByRole('button', { name: '全2投稿を一括コピー' }).click();
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(
+      '個別ユーザーA\n個別本文\n🌮🌮\n\n個別ユーザーB\n個別本文\n🌮🌮'
+    );
+
+    await installSlackCapture(page);
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
+      '<@U000TEST1>\n個別本文\n🌮🌮',
+      '<@U000TEST2>\n個別本文\n🌮🌮',
+    ]);
   });
 });
 
