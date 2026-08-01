@@ -735,6 +735,36 @@ test.describe('タコス メンバーID出力', () => {
     await expect(preview).not.toContainText('<@');
   });
 
+  test('同一ブロックの連名はプレビュー・コピー・Slack送信で半角スペース区切りになる', async ({ page }) => {
+    const data = makeMemberIdOutputState({
+      mode: 'merge',
+      blocks: [{
+        id: 1004,
+        recipients: [
+          { name: '連名ユーザーA', memberId: 'U000TEST1' },
+          { name: '連名ユーザーB', memberId: 'U000TEST2' },
+        ],
+        count: 1,
+        body: '連名本文',
+      }],
+    });
+    data.webhookUrl = 'https://example.test/webhook';
+    await loadWithState(page, data);
+    await openTacos(page);
+
+    await expect(page.locator('.post__body')).toHaveText('＠連名ユーザーA ＠連名ユーザーB\n連名本文\n🌮');
+
+    await installCopyCapture(page);
+    await page.locator('.post').getByRole('button', { name: 'コピー' }).click();
+    await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe('連名ユーザーA 連名ユーザーB\n連名本文\n🌮');
+
+    await installSlackCapture(page);
+    await page.getByRole('button', { name: 'Slack送信', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.__slackTexts)).toEqual([
+      '<@U000TEST1> <@U000TEST2>\n連名本文\n🌮',
+    ]);
+  });
+
   test('個別コピーは名前のみを含み＠とメンバーID記法を含まない', async ({ page }) => {
     await loadWithState(page, makeMemberIdOutputState({
       blocks: [{

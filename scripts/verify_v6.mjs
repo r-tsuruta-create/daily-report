@@ -96,9 +96,9 @@ state.tacoMode = 'merge';
 
 const merged = tacoPosts();
 assert(merged.length === 1, 'merge mode should group same-count recipients into one post');
-assert(merged[0].text === `Alice\nBob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco copy text format is wrong');
-assert(merged[0].slackText === `<@U000TEST1>\n<@U000TEST2>\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco Slack text format is wrong');
-assert(merged[0].previewText === `＠Alice\n＠Bob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco preview text format is wrong');
+assert(merged[0].text === `Alice Bob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco copy text format is wrong');
+assert(merged[0].slackText === `<@U000TEST1> <@U000TEST2>\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco Slack text format is wrong');
+assert(merged[0].previewText === `＠Alice ＠Bob\nNice work\n${'🌮'.repeat(2)}`, 'merge mode taco preview text format is wrong');
 assert(tacoDraftConsumption() === 4, 'draft taco meter should count recipients times count');
 
 state.tacoMode = 'split';
